@@ -294,14 +294,14 @@
    */
   const PERSONALITIES = [
     {
-      id: 'balanced', name: '参謀', trait: '均衡型', icon: '📐', color: '#4f7cac',
+      id: 'balanced', name: '参謀', trait: '均衡型', icon: '📐', mark: '参', color: '#3E6E9E',
       motto: '計算上、これが最善です。',
       desc: '総合的な評価関数で最善手を選ぶ。迷ったらこれ。',
       margin: 0,
       weights: {},
     },
     {
-      id: 'aggressive', name: '猛将', trait: '攻撃型', icon: '🔥', color: '#d64541',
+      id: 'aggressive', name: '猛将', trait: '攻撃型', icon: '🔥', mark: '猛', color: '#C24B3A',
       motto: '敵王の首を取りに行く！',
       desc: '敵王への圧力・駒の活動力を重視し、多少の損は気にしない。',
       margin: 130,
@@ -312,7 +312,7 @@
       },
     },
     {
-      id: 'defensive', name: '守将', trait: '防御型', icon: '🛡️', color: '#2e8b57',
+      id: 'defensive', name: '守将', trait: '防御型', icon: '🛡️', mark: '守', color: '#3C8A5A',
       motto: 'まずは守りを固めるのが肝要。',
       desc: '自王の安全と駒の連携を最優先。相手の攻め筋を先に潰す。',
       margin: 45,
@@ -323,7 +323,7 @@
       },
     },
     {
-      id: 'tricky', name: '策士', trait: '撹乱型', icon: '🌀', color: '#8e44ad',
+      id: 'tricky', name: '策士', trait: '撹乱型', icon: '🌀', mark: '策', color: '#8557B3',
       motto: 'ふふ、相手を惑わせてやりましょう。',
       desc: '相手の選択肢を奪い、脅しを重ねて混乱を誘う。読みにくい手を好む。',
       margin: 150,
@@ -334,7 +334,7 @@
       },
     },
     {
-      id: 'positional', name: '名将', trait: '大局型', icon: '🏔️', color: '#b8860b',
+      id: 'positional', name: '名将', trait: '大局型', icon: '🏔️', mark: '名', color: '#A8842A',
       motto: '大局を見よ。形が良ければ勝ちは後からついてくる。',
       desc: '駒の配置・ポーン構造・中央支配といった長期的な優位を積み上げる。',
       margin: 60,
@@ -345,7 +345,7 @@
       },
     },
     {
-      id: 'material', name: '商人', trait: '実利型', icon: '💰', color: '#c0392b',
+      id: 'material', name: '商人', trait: '実利型', icon: '💰', mark: '商', color: '#C27A2C',
       motto: '駒は取れるときに取る。損はしない。',
       desc: '駒得を何より重視。堅実に取って、堅実に守る。',
       margin: 80,

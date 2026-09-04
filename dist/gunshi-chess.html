@@ -1,0 +1,2278 @@
+<title>軍師チェス</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Crimson+Pro:wght@600;700&display=swap">
+<style>
+/* 軍師チェス — 紙と墨と藍。盤は楓と胡桃。 */
+:root {
+  --bg: #E8EBE6;
+  --panel: #F7F8F4;
+  --panel-2: #EEF1EC;
+  --ink: #1C2426;
+  --muted: #5B6A6D;
+  --line: #CBD3CE;
+  --accent: #274C77;
+  --accent-ink: #FFFFFF;
+  --topbar: #1C2426;
+  --topbar-ink: #E8EBE6;
+  --topbar-muted: #A8B4B2;
+  --light-sq: #E4D3B3;
+  --dark-sq: #9E7451;
+  --frame: #4A3A2A;
+  --coord-light: #7A5A3C;
+  --coord-dark: #E4D3B3;
+  --sel: rgba(255, 200, 0, 0.55);
+  --last: rgba(90, 150, 60, 0.42);
+  --check: rgba(200, 50, 50, 0.75);
+  --bar-bg: #1C2426;
+  --bar-fill: #F7F8F4;
+  --chip-bg: #E1E6E1;
+  --chip-ink: #3E4C4F;
+  --warn-bg: #F1D9D3;
+  --warn-ink: #8A2E1E;
+  --good: #2F7A4F;
+  --bad: #A83A2A;
+  --shadow: 0 8px 24px rgba(28, 36, 38, 0.18);
+  --sq: min(11vw, 64px);
+  --serif: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  --sans: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", Meiryo, system-ui, sans-serif;
+  --latin: "Crimson Pro", Georgia, "Times New Roman", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161A1D; --panel: #1F2528; --panel-2: #262E31; --ink: #E4E7E2; --muted: #98A5A8; --line: #33403F;
+    --accent: #7EA6D6; --accent-ink: #0F1215; --topbar: #0F1215; --topbar-ink: #E4E7E2; --topbar-muted: #7F8C8F;
+    --light-sq: #BFA983; --dark-sq: #705238; --frame: #2A2018; --coord-light: #5C4028; --coord-dark: #BFA983;
+    --bar-bg: #0B0E10; --bar-fill: #E4E7E2; --chip-bg: #2C3538; --chip-ink: #C5CFCB; --warn-bg: #4A2620; --warn-ink: #F0B4A6;
+    --good: #6FBF8E; --bad: #E58A78; --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161A1D; --panel: #1F2528; --panel-2: #262E31; --ink: #E4E7E2; --muted: #98A5A8; --line: #33403F;
+  --accent: #7EA6D6; --accent-ink: #0F1215; --topbar: #0F1215; --topbar-ink: #E4E7E2; --topbar-muted: #7F8C8F;
+  --light-sq: #BFA983; --dark-sq: #705238; --frame: #2A2018; --coord-light: #5C4028; --coord-dark: #BFA983;
+  --bar-bg: #0B0E10; --bar-fill: #E4E7E2; --chip-bg: #2C3538; --chip-ink: #C5CFCB; --warn-bg: #4A2620; --warn-ink: #F0B4A6;
+  --good: #6FBF8E; --bad: #E58A78; --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--sans);
+  font-size: 15px;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+}
+h1, h2 { margin: 0; font-family: var(--serif); font-weight: 700; text-wrap: balance; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* 上部 */
+.topbar {
+  padding: 14px 24px 12px;
+  background: var(--topbar);
+  color: var(--topbar-ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 28px;
+}
+.topbar h1 { font-size: 1.7rem; letter-spacing: 0.12em; }
+.tagline { margin: 0; font-size: 0.85rem; color: var(--topbar-muted); font-family: var(--serif); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-left: auto; font-size: 0.82rem; }
+.controls label { display: flex; align-items: center; gap: 6px; color: var(--topbar-muted); }
+select, button {
+  font: inherit;
+  padding: 5px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover { background: var(--panel-2); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; letter-spacing: 0.05em; }
+button.primary:hover { filter: brightness(1.12); }
+
+main {
+  display: grid;
+  grid-template-columns: auto minmax(300px, 1fr) 230px;
+  gap: 24px;
+  padding: 22px 24px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+@media (max-width: 1000px) {
+  main { grid-template-columns: auto minmax(280px, 1fr); }
+  .moves-panel { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+  .board-panel { justify-self: center; }
+}
+
+/* 紋 (軍師の印) */
+.mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.1em; height: 2.1em; border-radius: 50%;
+  font-family: var(--serif); font-weight: 700; font-size: 1.05rem; color: #FFFFFF;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35);
+  flex-shrink: 0;
+}
+.mark.small { width: 1.7em; height: 1.7em; font-size: 0.8rem; margin-right: 6px; vertical-align: -0.35em; }
+
+/* 盤 */
+.board-panel { display: flex; flex-direction: column; gap: 10px; }
+.board-wrap { position: relative; width: calc(var(--sq) * 8); }
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, var(--sq));
+  grid-template-rows: repeat(8, var(--sq));
+  border: 5px solid var(--frame);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+  user-select: none;
+}
+.square {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--sq) * 0.78);
+  line-height: 1;
+  cursor: pointer;
+}
+.square.light { background: var(--light-sq); }
+.square.dark { background: var(--dark-sq); }
+.square.last { box-shadow: inset 0 0 0 100px var(--last); }
+.square.selected { box-shadow: inset 0 0 0 100px var(--sel); }
+.square.check { background: radial-gradient(circle, var(--check) 30%, transparent 75%); }
+.square.target::after {
+  content: "";
+  position: absolute;
+  width: 30%; height: 30%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+}
+.square.target.capture::after {
+  width: 90%; height: 90%;
+  background: none;
+  border: calc(var(--sq) * 0.09) solid rgba(0, 0, 0, 0.28);
+}
+.square .coord {
+  position: absolute;
+  font-family: var(--latin);
+  font-size: calc(var(--sq) * 0.2);
+  font-weight: 700;
+  pointer-events: none;
+}
+.square .coord.file { right: 4px; bottom: 1px; }
+.square .coord.rank { left: 4px; top: 1px; }
+.square.light .coord { color: var(--coord-light); }
+.square.dark .coord { color: var(--coord-dark); }
+.piece {
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Sans Symbols2", "DejaVu Sans", "Apple Symbols", sans-serif;
+  pointer-events: none;
+  transform: translateY(-3%);
+}
+.piece.w { color: #FBFAF5; text-shadow: 0 0 1px #000, 0 0 2px #000, 0 1px 2px rgba(0,0,0,0.6); }
+.piece.b { color: #1A1714; text-shadow: 0 0 1px #FFF, 0 1px 2px rgba(255,255,255,0.35); }
+.arrows {
+  position: absolute; inset: 5px;
+  width: calc(100% - 10px); height: calc(100% - 10px);
+  pointer-events: none;
+}
+.arrows .arrow { opacity: 0.4; transition: opacity 0.15s; }
+.arrows .arrow.hot { opacity: 0.95; }
+
+.opponent-line { min-height: 1.8em; font-size: 0.92rem; color: var(--muted); font-family: var(--serif); }
+.opponent-line strong { color: var(--ink); }
+.opponent-line .depth { margin-left: 8px; font-family: var(--sans); font-size: 0.75rem; letter-spacing: 0.05em; }
+.eval-row { display: flex; align-items: center; gap: 10px; width: calc(var(--sq) * 8); }
+.eval-bar { flex: 1; height: 10px; background: var(--bar-bg); border-radius: 2px; overflow: hidden; border: 1px solid var(--frame); }
+.eval-fill { height: 100%; background: var(--bar-fill); width: 50%; transition: width 0.4s; }
+.eval-text { font-family: var(--latin); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.5em; text-align: right; font-size: 1rem; }
+.status { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; min-height: 1.7em; }
+.status.thinking { color: var(--muted); font-weight: 500; }
+.status.over { color: var(--bad); }
+.board-buttons { display: flex; gap: 8px; }
+
+/* 進言 */
+.advice-panel h2, .moves-panel h2 { font-size: 1.15rem; letter-spacing: 0.08em; margin-bottom: 4px; }
+.hint { margin: 0 0 8px; font-size: 0.8rem; color: var(--muted); }
+.advice-status { font-size: 0.82rem; color: var(--muted); min-height: 1.4em; margin-bottom: 10px; }
+.advice-status .spinner {
+  display: inline-block; width: 0.8em; height: 0.8em; margin-right: 6px;
+  border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite; vertical-align: -1px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 16px 10px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s, border-color 0.1s;
+  animation: cardin 0.25s ease-out;
+}
+@keyframes cardin { from { opacity: 0.4; transform: translateY(4px); } }
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--accent); }
+.card.disabled { cursor: default; opacity: 0.7; }
+.card.disabled:hover { transform: none; box-shadow: none; border-color: var(--line); }
+.card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-head .name { font-family: var(--serif); font-weight: 700; font-size: 1.1rem; }
+.card-head .trait { font-size: 0.75rem; letter-spacing: 0.12em; font-weight: 700; }
+.card-head .also { font-size: 0.75rem; color: var(--muted); margin-left: auto; }
+.card-move { display: flex; align-items: baseline; gap: 14px; margin-top: 6px; }
+.card-move .san { font-family: var(--latin); font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
+.card-move .score { font-family: var(--latin); font-size: 0.95rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card-move .score.good { color: var(--good); }
+.card-move .score.bad { color: var(--bad); }
+.card-comment { margin: 6px 0 4px; font-family: var(--serif); font-size: 0.98rem; }
+.card-note { font-size: 0.78rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip { font-size: 0.72rem; background: var(--chip-bg); color: var(--chip-ink); border-radius: 2px; padding: 1px 7px; letter-spacing: 0.04em; }
+.chip.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.pv { font-family: var(--latin); font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+
+/* 棋譜 */
+.movelist { margin: 0; padding-left: 2.4em; font-family: var(--latin); font-size: 1.05rem; max-height: 420px; overflow-y: auto; }
+.movelist li { padding: 1px 0; }
+.movelist li span { display: inline-block; min-width: 3.6em; }
+.roster { margin-top: 16px; font-size: 0.85rem; }
+.roster summary { cursor: pointer; font-family: var(--serif); font-weight: 700; }
+.roster ul { padding-left: 0; list-style: none; margin: 8px 0 0; }
+.roster li { margin-bottom: 10px; }
+.roster .desc { color: var(--muted); font-size: 0.78rem; display: block; margin-top: 2px; }
+
+/* 昇格 */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.modal[hidden] { display: none; }
+.modal-box { background: var(--panel); padding: 16px 20px; border-radius: 4px; text-align: center; box-shadow: var(--shadow); }
+.modal-box p { margin: 0 0 10px; font-family: var(--serif); }
+.promo-choices { display: flex; gap: 8px; justify-content: center; }
+.promo-choices button { font-size: 2.4rem; line-height: 1; padding: 6px 10px; background: var(--dark-sq); }
+
+</style>
+<header class="topbar">
+  <h1>軍師チェス</h1>
+  <p class="tagline">自分で指してもよし、六人の軍師の進言から選ぶだけでもよし。</p>
+  <div class="controls">
+    <label>あなたの色
+      <select id="color-select">
+        <option value="w">白（先手）</option>
+        <option value="b">黒（後手）</option>
+        <option value="r">ランダム</option>
+      </select>
+    </label>
+    <label>相手の強さ
+      <select id="level-select">
+        <option value="0">入門</option>
+        <option value="1">初級</option>
+        <option value="2" selected>中級</option>
+        <option value="3">上級</option>
+        <option value="4">達人</option>
+      </select>
+    </label>
+    <label>相手の性格
+      <select id="opp-select"><option value="random">ランダム</option></select>
+    </label>
+    <label>軍師の読み
+      <select id="advice-depth">
+        <option value="2">浅い（速い）</option>
+        <option value="3" selected>普通</option>
+        <option value="4">深い（遅い）</option>
+      </select>
+    </label>
+    <button id="new-game" class="primary">新しい対局</button>
+  </div>
+</header>
+
+<main>
+  <section class="board-panel">
+    <div class="opponent-line" id="opponent-line"></div>
+    <div class="board-wrap">
+      <div id="board" class="board"></div>
+      <svg id="arrows" class="arrows" viewBox="0 0 8 8" aria-hidden="true"></svg>
+    </div>
+    <div class="eval-row">
+      <div class="eval-bar" title="形勢（白から見た評価）"><div id="eval-fill" class="eval-fill"></div></div>
+      <span id="eval-text" class="eval-text">+0.0</span>
+    </div>
+    <div id="status" class="status"></div>
+    <div class="board-buttons">
+      <button id="undo">待った</button>
+      <button id="flip">盤を反転</button>
+      <button id="resign">投了</button>
+    </div>
+  </section>
+
+  <section class="advice-panel">
+    <h2>軍師の進言</h2>
+    <p class="hint">カードをクリックするとその手を指します。盤面を直接クリックして指すこともできます。</p>
+    <div id="advice-status" class="advice-status"></div>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <section class="moves-panel">
+    <h2>棋譜</h2>
+    <ol id="movelist" class="movelist"></ol>
+    <details class="roster">
+      <summary>軍師紹介</summary>
+      <ul id="roster"></ul>
+    </details>
+  </section>
+</main>
+
+<div id="promo-dialog" class="modal" hidden>
+  <div class="modal-box">
+    <p>昇格する駒を選んでください</p>
+    <div class="promo-choices"></div>
+  </div>
+</div>
+<script>
+/*
+ * chess.js — チェスのルール実装 (0x88 盤表現)
+ *
+ * ブラウザでは window.Chess、Node では module.exports として公開する。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Chess = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const EMPTY = 0, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
+  const WHITE = 1, BLACK = -1;
+  const F_CAPTURE = 1, F_PAWN2 = 2, F_EP = 4, F_CASTLE = 8, F_PROMO = 16;
+  const C_WK = 1, C_WQ = 2, C_BK = 4, C_BQ = 8;
+  const PIECE_LETTERS = ' PNBRQK';
+  const PIECE_FROM_CHAR = { p: 1, n: 2, b: 3, r: 4, q: 5, k: 6 };
+  const KNIGHT_OFFS = [-33, -31, -18, -14, 14, 18, 31, 33];
+  const BISHOP_OFFS = [-17, -15, 15, 17];
+  const ROOK_OFFS = [-16, -1, 1, 16];
+  const KING_OFFS = [-17, -16, -15, -1, 1, 15, 16, 17];
+  const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const VALUES = [0, 100, 320, 330, 500, 900, 20000];
+
+  // 駒が動いたときに失われるキャスリング権のマスク
+  const CASTLE_MASK = new Uint8Array(128).fill(15);
+  CASTLE_MASK[0] &= ~C_WQ; CASTLE_MASK[4] &= ~(C_WK | C_WQ); CASTLE_MASK[7] &= ~C_WK;
+  CASTLE_MASK[112] &= ~C_BQ; CASTLE_MASK[116] &= ~(C_BK | C_BQ); CASTLE_MASK[119] &= ~C_BK;
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return (t ^ (t >>> 14)) | 0;
+    };
+  }
+
+  // Zobrist ハッシュ (32bit を 2 本使う)
+  const Z = (function () {
+    const r1 = mulberry32(0x9E3779B9), r2 = mulberry32(0x7F4A7C15);
+    const p1 = [], p2 = [];
+    for (let p = 0; p < 14; p++) {
+      p1.push(new Int32Array(128)); p2.push(new Int32Array(128));
+      for (let s = 0; s < 128; s++) { p1[p][s] = r1(); p2[p][s] = r2(); }
+    }
+    const c1 = new Int32Array(16), c2 = new Int32Array(16);
+    for (let i = 0; i < 16; i++) { c1[i] = r1(); c2[i] = r2(); }
+    const e1 = new Int32Array(8), e2 = new Int32Array(8);
+    for (let i = 0; i < 8; i++) { e1[i] = r1(); e2[i] = r2(); }
+    return { p1, p2, c1, c2, e1, e2, s1: r1(), s2: r2() };
+  })();
+
+  const sqName = (s) => 'abcdefgh'[s & 7] + (1 + (s >> 4));
+  const parseSq = (str) => ((str.charCodeAt(1) - 49) << 4) | (str.charCodeAt(0) - 97);
+  const fileOf = (s) => s & 7;
+  const rankOf = (s) => s >> 4;
+  const onBoard = (s) => (s & 0x88) === 0;
+  const encodeMove = (from, to, promo) => from | (to << 7) | (promo << 14);
+
+  class Position {
+    constructor(fen) {
+      this.board = new Int8Array(128);
+      this.side = WHITE;
+      this.castling = 0;
+      this.ep = -1;
+      this.halfmove = 0;
+      this.fullmove = 1;
+      this.kingSq = [4, 116]; // [white, black]
+      this.history = [];
+      this.h1 = 0; this.h2 = 0;
+      this.setFen(fen || START_FEN);
+    }
+
+    clone() {
+      const p = Object.create(Position.prototype);
+      p.board = new Int8Array(this.board);
+      p.side = this.side; p.castling = this.castling; p.ep = this.ep;
+      p.halfmove = this.halfmove; p.fullmove = this.fullmove;
+      p.kingSq = this.kingSq.slice();
+      p.history = this.history.slice();
+      p.h1 = this.h1; p.h2 = this.h2;
+      return p;
+    }
+
+    setFen(fen) {
+      const parts = fen.trim().split(/\s+/);
+      this.board.fill(0);
+      let rank = 7, file = 0;
+      for (const ch of parts[0]) {
+        if (ch === '/') { rank--; file = 0; }
+        else if (ch >= '1' && ch <= '8') file += +ch;
+        else {
+          const p = PIECE_FROM_CHAR[ch.toLowerCase()];
+          const color = ch === ch.toUpperCase() ? WHITE : BLACK;
+          this.board[(rank << 4) | file] = p * color;
+          file++;
+        }
+      }
+      this.side = parts[1] === 'b' ? BLACK : WHITE;
+      this.castling = 0;
+      if (parts[2] && parts[2] !== '-') {
+        for (const c of parts[2]) {
+          if (c === 'K') this.castling |= C_WK;
+          else if (c === 'Q') this.castling |= C_WQ;
+          else if (c === 'k') this.castling |= C_BK;
+          else if (c === 'q') this.castling |= C_BQ;
+        }
+      }
+      this.ep = parts[3] && parts[3] !== '-' ? parseSq(parts[3]) : -1;
+      this.halfmove = parts[4] ? +parts[4] : 0;
+      this.fullmove = parts[5] ? +parts[5] : 1;
+      this.history = [];
+      for (let s = 0; s < 128; s++) {
+        if (s & 0x88) { s += 7; continue; }
+        if (this.board[s] === KING) this.kingSq[0] = s;
+        else if (this.board[s] === -KING) this.kingSq[1] = s;
+      }
+      this.computeHash();
+    }
+
+    fen() {
+      let out = '';
+      for (let r = 7; r >= 0; r--) {
+        let empty = 0;
+        for (let f = 0; f < 8; f++) {
+          const p = this.board[(r << 4) | f];
+          if (p === 0) { empty++; continue; }
+          if (empty) { out += empty; empty = 0; }
+          const ch = PIECE_LETTERS[Math.abs(p)];
+          out += p > 0 ? ch : ch.toLowerCase();
+        }
+        if (empty) out += empty;
+        if (r) out += '/';
+      }
+      out += this.side === WHITE ? ' w ' : ' b ';
+      let c = '';
+      if (this.castling & C_WK) c += 'K';
+      if (this.castling & C_WQ) c += 'Q';
+      if (this.castling & C_BK) c += 'k';
+      if (this.castling & C_BQ) c += 'q';
+      out += (c || '-') + ' ' + (this.ep >= 0 ? sqName(this.ep) : '-');
+      out += ' ' + this.halfmove + ' ' + this.fullmove;
+      return out;
+    }
+
+    computeHash() {
+      let h1 = 0, h2 = 0;
+      for (let s = 0; s < 128; s++) {
+        if (s & 0x88) { s += 7; continue; }
+        const p = this.board[s];
+        if (p) { h1 ^= Z.p1[p + 7][s]; h2 ^= Z.p2[p + 7][s]; }
+      }
+      h1 ^= Z.c1[this.castling]; h2 ^= Z.c2[this.castling];
+      if (this.ep >= 0) { h1 ^= Z.e1[this.ep & 7]; h2 ^= Z.e2[this.ep & 7]; }
+      if (this.side === BLACK) { h1 ^= Z.s1; h2 ^= Z.s2; }
+      this.h1 = h1; this.h2 = h2;
+    }
+
+    // sq が color 側の駒に攻撃されているか
+    isAttacked(sq, color) {
+      const b = this.board;
+      // ポーン
+      if (color === WHITE) {
+        if (onBoard(sq - 15) && b[sq - 15] === PAWN) return true;
+        if (onBoard(sq - 17) && b[sq - 17] === PAWN) return true;
+      } else {
+        if (onBoard(sq + 15) && b[sq + 15] === -PAWN) return true;
+        if (onBoard(sq + 17) && b[sq + 17] === -PAWN) return true;
+      }
+      const n = KNIGHT * color, k = KING * color, bi = BISHOP * color, ro = ROOK * color, q = QUEEN * color;
+      for (let i = 0; i < 8; i++) {
+        const t = sq + KNIGHT_OFFS[i];
+        if (onBoard(t) && b[t] === n) return true;
+      }
+      for (let i = 0; i < 8; i++) {
+        const t = sq + KING_OFFS[i];
+        if (onBoard(t) && b[t] === k) return true;
+      }
+      for (let i = 0; i < 4; i++) {
+        const d = BISHOP_OFFS[i];
+        for (let t = sq + d; onBoard(t); t += d) {
+          const p = b[t];
+          if (p) { if (p === bi || p === q) return true; break; }
+        }
+      }
+      for (let i = 0; i < 4; i++) {
+        const d = ROOK_OFFS[i];
+        for (let t = sq + d; onBoard(t); t += d) {
+          const p = b[t];
+          if (p) { if (p === ro || p === q) return true; break; }
+        }
+      }
+      return false;
+    }
+
+    kingAttacked(color) {
+      return this.isAttacked(this.kingSq[color === WHITE ? 0 : 1], -color);
+    }
+
+    inCheck() { return this.kingAttacked(this.side); }
+
+    /** 疑似合法手を生成する。capturesOnly なら駒取りと昇格のみ。 */
+    generatePseudo(capturesOnly) {
+      const b = this.board, us = this.side, them = -us;
+      const moves = [];
+      const add = (from, to, piece, captured, promo, flags) => {
+        moves.push({ from, to, piece, captured, promo, flags, enc: encodeMove(from, to, promo) });
+      };
+      const fwd = 16 * us;
+      const startRank = us === WHITE ? 1 : 6;
+      const promoRank = us === WHITE ? 7 : 0;
+      for (let s = 0; s < 128; s++) {
+        if (s & 0x88) { s += 7; continue; }
+        const p = b[s];
+        if (p === 0 || (p > 0) !== (us > 0)) continue;
+        const pt = p * us;
+        if (pt === PAWN) {
+          const t = s + fwd;
+          if (b[t] === 0) {
+            if (rankOf(t) === promoRank) {
+              for (let pr = QUEEN; pr >= KNIGHT; pr--) add(s, t, p, 0, pr, F_PROMO);
+            } else if (!capturesOnly) {
+              add(s, t, p, 0, 0, 0);
+              if (rankOf(s) === startRank && b[t + fwd] === 0) add(s, t + fwd, p, 0, 0, F_PAWN2);
+            }
+          }
+          for (const d of [fwd - 1, fwd + 1]) {
+            const c = s + d;
+            if (!onBoard(c)) continue;
+            const cp = b[c];
+            if (cp !== 0 && (cp > 0) !== (us > 0)) {
+              if (rankOf(c) === promoRank) {
+                for (let pr = QUEEN; pr >= KNIGHT; pr--) add(s, c, p, cp, pr, F_CAPTURE | F_PROMO);
+              } else add(s, c, p, cp, 0, F_CAPTURE);
+            } else if (c === this.ep && cp === 0) {
+              add(s, c, p, -p, 0, F_CAPTURE | F_EP);
+            }
+          }
+        } else if (pt === KNIGHT || pt === KING) {
+          const offs = pt === KNIGHT ? KNIGHT_OFFS : KING_OFFS;
+          for (let i = 0; i < 8; i++) {
+            const t = s + offs[i];
+            if (!onBoard(t)) continue;
+            const tp = b[t];
+            if (tp === 0) { if (!capturesOnly) add(s, t, p, 0, 0, 0); }
+            else if ((tp > 0) !== (us > 0)) add(s, t, p, tp, 0, F_CAPTURE);
+          }
+        } else {
+          const offs = pt === BISHOP ? BISHOP_OFFS : pt === ROOK ? ROOK_OFFS : KING_OFFS;
+          for (let i = 0; i < offs.length; i++) {
+            const d = offs[i];
+            for (let t = s + d; onBoard(t); t += d) {
+              const tp = b[t];
+              if (tp === 0) { if (!capturesOnly) add(s, t, p, 0, 0, 0); continue; }
+              if ((tp > 0) !== (us > 0)) add(s, t, p, tp, 0, F_CAPTURE);
+              break;
+            }
+          }
+        }
+      }
+      if (!capturesOnly) {
+        // キャスリング
+        if (us === WHITE) {
+          if ((this.castling & C_WK) && b[5] === 0 && b[6] === 0 && b[7] === ROOK &&
+              !this.isAttacked(4, them) && !this.isAttacked(5, them) && !this.isAttacked(6, them))
+            add(4, 6, KING, 0, 0, F_CASTLE);
+          if ((this.castling & C_WQ) && b[3] === 0 && b[2] === 0 && b[1] === 0 && b[0] === ROOK &&
+              !this.isAttacked(4, them) && !this.isAttacked(3, them) && !this.isAttacked(2, them))
+            add(4, 2, KING, 0, 0, F_CASTLE);
+        } else {
+          if ((this.castling & C_BK) && b[117] === 0 && b[118] === 0 && b[119] === -ROOK &&
+              !this.isAttacked(116, them) && !this.isAttacked(117, them) && !this.isAttacked(118, them))
+            add(116, 118, -KING, 0, 0, F_CASTLE);
+          if ((this.castling & C_BQ) && b[115] === 0 && b[114] === 0 && b[113] === 0 && b[112] === -ROOK &&
+              !this.isAttacked(116, them) && !this.isAttacked(115, them) && !this.isAttacked(114, them))
+            add(116, 114, -KING, 0, 0, F_CASTLE);
+        }
+      }
+      return moves;
+    }
+
+    legalMoves() {
+      const pseudo = this.generatePseudo(false);
+      const legal = [];
+      const us = this.side;
+      for (const m of pseudo) {
+        this.make(m);
+        if (!this.kingAttacked(us)) legal.push(m);
+        this.unmake();
+      }
+      return legal;
+    }
+
+    make(m) {
+      const b = this.board, us = this.side, them = -us;
+      this.history.push({
+        m, castling: this.castling, ep: this.ep, halfmove: this.halfmove, h1: this.h1, h2: this.h2,
+      });
+      let h1 = this.h1, h2 = this.h2;
+      if (this.ep >= 0) { h1 ^= Z.e1[this.ep & 7]; h2 ^= Z.e2[this.ep & 7]; }
+      h1 ^= Z.c1[this.castling]; h2 ^= Z.c2[this.castling];
+
+      const piece = b[m.from];
+      b[m.from] = 0;
+      h1 ^= Z.p1[piece + 7][m.from]; h2 ^= Z.p2[piece + 7][m.from];
+      if (m.flags & F_EP) {
+        const capSq = m.to - 16 * us;
+        h1 ^= Z.p1[b[capSq] + 7][capSq]; h2 ^= Z.p2[b[capSq] + 7][capSq];
+        b[capSq] = 0;
+      } else if (m.captured) {
+        h1 ^= Z.p1[m.captured + 7][m.to]; h2 ^= Z.p2[m.captured + 7][m.to];
+      }
+      const placed = m.promo ? m.promo * us : piece;
+      b[m.to] = placed;
+      h1 ^= Z.p1[placed + 7][m.to]; h2 ^= Z.p2[placed + 7][m.to];
+      if (m.flags & F_CASTLE) {
+        let rf, rt;
+        if (m.to > m.from) { rf = m.to + 1; rt = m.to - 1; } else { rf = m.to - 2; rt = m.to + 1; }
+        const rook = b[rf];
+        b[rt] = rook; b[rf] = 0;
+        h1 ^= Z.p1[rook + 7][rf] ^ Z.p1[rook + 7][rt];
+        h2 ^= Z.p2[rook + 7][rf] ^ Z.p2[rook + 7][rt];
+      }
+      if (piece === KING * us) this.kingSq[us === WHITE ? 0 : 1] = m.to;
+
+      this.castling &= CASTLE_MASK[m.from] & CASTLE_MASK[m.to];
+      h1 ^= Z.c1[this.castling]; h2 ^= Z.c2[this.castling];
+      this.ep = (m.flags & F_PAWN2) ? m.from + 16 * us : -1;
+      if (this.ep >= 0) { h1 ^= Z.e1[this.ep & 7]; h2 ^= Z.e2[this.ep & 7]; }
+      if (piece === PAWN * us || m.captured) this.halfmove = 0; else this.halfmove++;
+      if (us === BLACK) this.fullmove++;
+      this.side = them;
+      h1 ^= Z.s1; h2 ^= Z.s2;
+      this.h1 = h1; this.h2 = h2;
+    }
+
+    unmake() {
+      const h = this.history.pop();
+      const m = h.m;
+      const b = this.board;
+      const us = -this.side; // 指した側
+      const piece = m.promo ? PAWN * us : b[m.to];
+      b[m.from] = piece;
+      b[m.to] = 0;
+      if (m.flags & F_EP) b[m.to - 16 * us] = m.captured;
+      else if (m.captured) b[m.to] = m.captured;
+      if (m.flags & F_CASTLE) {
+        if (m.to > m.from) { b[m.to + 1] = b[m.to - 1]; b[m.to - 1] = 0; }
+        else { b[m.to - 2] = b[m.to + 1]; b[m.to + 1] = 0; }
+      }
+      if (piece === KING * us) this.kingSq[us === WHITE ? 0 : 1] = m.from;
+      this.castling = h.castling; this.ep = h.ep; this.halfmove = h.halfmove;
+      this.h1 = h.h1; this.h2 = h.h2;
+      if (us === BLACK) this.fullmove--;
+      this.side = us;
+    }
+
+    /** 現局面が過去に count 回以上現れているか (現局面を含む) */
+    repetitionCount() {
+      let n = 1;
+      const hist = this.history;
+      const limit = Math.max(0, hist.length - this.halfmove);
+      for (let i = hist.length - 2; i >= limit; i -= 2) {
+        if (hist[i].h1 === this.h1 && hist[i].h2 === this.h2) n++;
+      }
+      return n;
+    }
+
+    isRepetition() { return this.repetitionCount() >= 2; }
+
+    insufficientMaterial() {
+      let minors = 0, bishopsColor = -1, sameColorBishops = true;
+      for (let s = 0; s < 128; s++) {
+        if (s & 0x88) { s += 7; continue; }
+        const p = Math.abs(this.board[s]);
+        if (p === 0 || p === KING) continue;
+        if (p === PAWN || p === ROOK || p === QUEEN) return false;
+        minors++;
+        if (p === BISHOP) {
+          const c = (fileOf(s) + rankOf(s)) & 1;
+          if (bishopsColor === -1) bishopsColor = c; else if (bishopsColor !== c) sameColorBishops = false;
+        } else sameColorBishops = false;
+      }
+      if (minors <= 1) return true;
+      return sameColorBishops; // 同色ビショップのみ
+    }
+
+    /** 対局の状態 */
+    status() {
+      const legal = this.legalMoves();
+      if (legal.length === 0) {
+        if (this.inCheck()) return { over: true, result: this.side === WHITE ? '0-1' : '1-0', reason: 'checkmate' };
+        return { over: true, result: '1/2-1/2', reason: 'stalemate' };
+      }
+      if (this.repetitionCount() >= 3) return { over: true, result: '1/2-1/2', reason: 'repetition' };
+      if (this.halfmove >= 100) return { over: true, result: '1/2-1/2', reason: 'fifty' };
+      if (this.insufficientMaterial()) return { over: true, result: '1/2-1/2', reason: 'insufficient' };
+      return { over: false, result: null, reason: null, check: this.inCheck() };
+    }
+
+    san(m, legal) {
+      legal = legal || this.legalMoves();
+      let s = '';
+      const pt = Math.abs(m.piece);
+      if (m.flags & F_CASTLE) s = m.to > m.from ? 'O-O' : 'O-O-O';
+      else {
+        if (pt !== PAWN) {
+          s += PIECE_LETTERS[pt];
+          const others = legal.filter((o) => o.to === m.to && o.piece === m.piece && o.from !== m.from);
+          if (others.length) {
+            const sameFile = others.some((o) => fileOf(o.from) === fileOf(m.from));
+            const sameRank = others.some((o) => rankOf(o.from) === rankOf(m.from));
+            if (!sameFile) s += 'abcdefgh'[fileOf(m.from)];
+            else if (!sameRank) s += (rankOf(m.from) + 1);
+            else s += sqName(m.from);
+          }
+        } else if (m.flags & F_CAPTURE) s += 'abcdefgh'[fileOf(m.from)];
+        if (m.flags & F_CAPTURE) s += 'x';
+        s += sqName(m.to);
+        if (m.promo) s += '=' + PIECE_LETTERS[m.promo];
+      }
+      this.make(m);
+      if (this.inCheck()) s += this.legalMoves().length ? '+' : '#';
+      this.unmake();
+      return s;
+    }
+
+    uci(m) { return sqName(m.from) + sqName(m.to) + (m.promo ? PIECE_LETTERS[m.promo].toLowerCase() : ''); }
+
+    moveFromUci(str) {
+      const from = parseSq(str.slice(0, 2)), to = parseSq(str.slice(2, 4));
+      const promo = str.length > 4 ? PIECE_FROM_CHAR[str[4]] : 0;
+      return this.legalMoves().find((m) => m.from === from && m.to === to && (m.promo || 0) === promo) || null;
+    }
+
+    perft(depth) {
+      if (depth === 0) return 1;
+      const moves = this.legalMoves();
+      if (depth === 1) return moves.length;
+      let n = 0;
+      for (const m of moves) { this.make(m); n += this.perft(depth - 1); this.unmake(); }
+      return n;
+    }
+  }
+
+  return {
+    Position, START_FEN, VALUES,
+    EMPTY, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, WHITE, BLACK,
+    F_CAPTURE, F_PAWN2, F_EP, F_CASTLE, F_PROMO,
+    C_WK, C_WQ, C_BK, C_BQ,
+    KNIGHT_OFFS, BISHOP_OFFS, ROOK_OFFS, KING_OFFS,
+    sqName, parseSq, fileOf, rankOf, onBoard, encodeMove, PIECE_LETTERS,
+  };
+});
+
+/*
+ * eval.js — 評価関数と「性格」定義
+ *
+ * 評価は「性格の持ち主 (me)」から見たスコアを計算し、
+ * 手番が me でなければ符号を反転して返す (negamax 用)。
+ * 性格ごとの重みで、同じ局面でも違う手が好まれるようになる。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./chess.js'));
+  else root.Eval = factory(root.Chess);
+})(typeof self !== 'undefined' ? self : this, function (Chess) {
+  'use strict';
+
+  const { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, WHITE, BLACK, VALUES,
+    KNIGHT_OFFS, BISHOP_OFFS, ROOK_OFFS, KING_OFFS, onBoard, fileOf, rankOf } = Chess;
+
+  // Piece-Square Tables (a8 から h1 の順、白視点)
+  const PST = {
+    [PAWN]: [
+      0, 0, 0, 0, 0, 0, 0, 0,
+      50, 50, 50, 50, 50, 50, 50, 50,
+      10, 10, 20, 30, 30, 20, 10, 10,
+      5, 5, 10, 25, 25, 10, 5, 5,
+      0, 0, 0, 20, 20, 0, 0, 0,
+      5, -5, -10, 0, 0, -10, -5, 5,
+      5, 10, 10, -20, -20, 10, 10, 5,
+      0, 0, 0, 0, 0, 0, 0, 0],
+    [KNIGHT]: [
+      -50, -40, -30, -30, -30, -30, -40, -50,
+      -40, -20, 0, 0, 0, 0, -20, -40,
+      -30, 0, 10, 15, 15, 10, 0, -30,
+      -30, 5, 15, 20, 20, 15, 5, -30,
+      -30, 0, 15, 20, 20, 15, 0, -30,
+      -30, 5, 10, 15, 15, 10, 5, -30,
+      -40, -20, 0, 5, 5, 0, -20, -40,
+      -50, -40, -30, -30, -30, -30, -40, -50],
+    [BISHOP]: [
+      -20, -10, -10, -10, -10, -10, -10, -20,
+      -10, 0, 0, 0, 0, 0, 0, -10,
+      -10, 0, 5, 10, 10, 5, 0, -10,
+      -10, 5, 5, 10, 10, 5, 5, -10,
+      -10, 0, 10, 10, 10, 10, 0, -10,
+      -10, 10, 10, 10, 10, 10, 10, -10,
+      -10, 5, 0, 0, 0, 0, 5, -10,
+      -20, -10, -10, -10, -10, -10, -10, -20],
+    [ROOK]: [
+      0, 0, 0, 0, 0, 0, 0, 0,
+      5, 10, 10, 10, 10, 10, 10, 5,
+      -5, 0, 0, 0, 0, 0, 0, -5,
+      -5, 0, 0, 0, 0, 0, 0, -5,
+      -5, 0, 0, 0, 0, 0, 0, -5,
+      -5, 0, 0, 0, 0, 0, 0, -5,
+      -5, 0, 0, 0, 0, 0, 0, -5,
+      0, 0, 0, 5, 5, 0, 0, 0],
+    [QUEEN]: [
+      -20, -10, -10, -5, -5, -10, -10, -20,
+      -10, 0, 0, 0, 0, 0, 0, -10,
+      -10, 0, 5, 5, 5, 5, 0, -10,
+      -5, 0, 5, 5, 5, 5, 0, -5,
+      0, 0, 5, 5, 5, 5, 0, -5,
+      -10, 5, 5, 5, 5, 5, 0, -10,
+      -10, 0, 5, 0, 0, 0, 0, -10,
+      -20, -10, -10, -5, -5, -10, -10, -20],
+  };
+  const KING_MG = [
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20,
+    -10, -20, -20, -20, -20, -20, -20, -10,
+    20, 20, 0, 0, 0, 0, 20, 20,
+    20, 30, 10, 0, 0, 10, 30, 20];
+  const KING_EG = [
+    -50, -40, -30, -20, -20, -30, -40, -50,
+    -30, -20, -10, 0, 0, -10, -20, -30,
+    -30, -10, 20, 30, 30, 20, -10, -30,
+    -30, -10, 30, 40, 40, 30, -10, -30,
+    -30, -10, 30, 40, 40, 30, -10, -30,
+    -30, -10, 20, 30, 30, 20, -10, -30,
+    -30, -30, 0, 0, 0, 0, -30, -30,
+    -50, -30, -30, -30, -30, -30, -30, -50];
+
+  // 0x88 マス → PST インデックス (白: 8 段目が先頭、黒: 鏡像)
+  const IDX_W = new Uint8Array(128), IDX_B = new Uint8Array(128);
+  for (let s = 0; s < 128; s++) {
+    if (s & 0x88) continue;
+    IDX_W[s] = (7 - rankOf(s)) * 8 + fileOf(s);
+    IDX_B[s] = rankOf(s) * 8 + fileOf(s);
+  }
+  const PASSED_BONUS = [0, 10, 15, 25, 40, 65, 100, 0]; // 相対段ごと
+  const CENTER = [51, 52, 67, 68]; // d4 e4 d5 e5
+  const MINOR_START = { [WHITE]: [1, 2, 5, 6], [BLACK]: [113, 114, 117, 118] };
+
+  const attW = new Uint8Array(128), attB = new Uint8Array(128);
+
+  /**
+   * 局面の特徴量を両陣営分まとめて計算する。
+   * 各項目は [white, black] の配列。
+   */
+  function features(pos) {
+    const b = pos.board;
+    attW.fill(0); attB.fill(0);
+    const mat = [0, 0], pst = [0, 0], mob = [0, 0], npm = [0, 0];
+    const pawnFiles = [[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]];
+    const pawns = [[], []];
+    const pieces = [[], []];
+    let kingPstMg = [0, 0], kingPstEg = [0, 0];
+
+    for (let s = 0; s < 128; s++) {
+      if (s & 0x88) { s += 7; continue; }
+      const p = b[s];
+      if (!p) continue;
+      const c = p > 0 ? 0 : 1;
+      const pt = p > 0 ? p : -p;
+      const att = c === 0 ? attW : attB;
+      const idx = c === 0 ? IDX_W[s] : IDX_B[s];
+      mat[c] += VALUES[pt];
+      if (pt === KING) { kingPstMg[c] = KING_MG[idx]; kingPstEg[c] = KING_EG[idx]; }
+      else pst[c] += PST[pt][idx];
+      if (pt !== PAWN && pt !== KING) { npm[c] += VALUES[pt]; pieces[c].push(s); }
+      if (pt === PAWN) {
+        pawnFiles[c][fileOf(s)]++;
+        pawns[c].push(s);
+        const fwd = c === 0 ? 16 : -16;
+        if (onBoard(s + fwd - 1)) att[s + fwd - 1]++;
+        if (onBoard(s + fwd + 1)) att[s + fwd + 1]++;
+      } else if (pt === KNIGHT || pt === KING) {
+        const offs = pt === KNIGHT ? KNIGHT_OFFS : KING_OFFS;
+        for (let i = 0; i < 8; i++) {
+          const t = s + offs[i];
+          if (!onBoard(t)) continue;
+          att[t]++;
+          if (pt === KNIGHT && (b[t] === 0 || (b[t] > 0) !== (p > 0))) mob[c]++;
+        }
+      } else {
+        const offs = pt === BISHOP ? BISHOP_OFFS : pt === ROOK ? ROOK_OFFS : KING_OFFS;
+        for (let i = 0; i < offs.length; i++) {
+          const d = offs[i];
+          for (let t = s + d; onBoard(t); t += d) {
+            att[t]++;
+            const tp = b[t];
+            if (tp === 0) { mob[c]++; continue; }
+            if ((tp > 0) !== (p > 0)) mob[c]++;
+            break;
+          }
+        }
+      }
+    }
+
+    // フェーズ: 1 = 序盤, 0 = 終盤
+    const totalNpm = npm[0] + npm[1];
+    const phase = Math.max(0, Math.min(1, (totalNpm - 1600) / 3400));
+    for (let c = 0; c < 2; c++) pst[c] += kingPstMg[c] * phase + kingPstEg[c] * (1 - phase);
+
+    // 王周辺への攻撃、王の盾
+    const kingAtt = [0, 0], shield = [0, 0];
+    for (let c = 0; c < 2; c++) {
+      const ks = pos.kingSq[c];
+      const enemyAtt = c === 0 ? attB : attW;
+      const ownAtt = c === 0 ? attW : attB;
+      let a = enemyAtt[ks] * 2;
+      for (let i = 0; i < 8; i++) {
+        const t = ks + KING_OFFS[i];
+        if (!onBoard(t)) continue;
+        a += enemyAtt[t];
+        if (ownAtt[t] === 0 && enemyAtt[t] > 0) a += 1; // 守られていない隣接マス
+      }
+      kingAtt[1 - c] = a; // 相手が c の王を攻撃している量
+      // 盾: 王の前方 2 段 x 3 列のポーン、隣接列にポーンがないと減点
+      const fwd = c === 0 ? 16 : -16;
+      const ownPawn = c === 0 ? PAWN : -PAWN;
+      let sh = 0;
+      const kf = fileOf(ks);
+      for (let df = -1; df <= 1; df++) {
+        const f = kf + df;
+        if (f < 0 || f > 7) continue;
+        const t1 = ks + fwd + df, t2 = ks + 2 * fwd + df;
+        if (onBoard(t1) && b[t1] === ownPawn) sh += 2;
+        else if (onBoard(t2) && b[t2] === ownPawn) sh += 1;
+        if (pawnFiles[c][f] === 0) sh -= 2;
+      }
+      shield[c] = sh * phase;
+    }
+
+    // 浮き駒 (hanging) と脅威
+    const hanging = [0, 0], threats = [0, 0];
+    for (let c = 0; c < 2; c++) {
+      const enemyAtt = c === 0 ? attB : attW;
+      const ownAtt = c === 0 ? attW : attB;
+      const enemyPawn = c === 0 ? -PAWN : PAWN;
+      const fwd = c === 0 ? 16 : -16;
+      const list = pieces[c].concat(pawns[c]);
+      for (const s of list) {
+        const v = VALUES[Math.abs(b[s])];
+        if (enemyAtt[s] === 0) continue;
+        let h = 0;
+        if (ownAtt[s] === 0) h = v;
+        else if (v > 100) {
+          // 敵ポーンに当たっている駒は守られていても損
+          const a1 = s + fwd - 1, a2 = s + fwd + 1;
+          if ((onBoard(a1) && b[a1] === enemyPawn) || (onBoard(a2) && b[a2] === enemyPawn)) h = v - 100;
+        }
+        if (h > 0) {
+          hanging[c] += h;
+          threats[1 - c] += 1 + h / 100;
+        } else if (v > 100) threats[1 - c] += 0.5;
+      }
+    }
+
+    // ポーン構造
+    const pawnScore = [0, 0];
+    for (let c = 0; c < 2; c++) {
+      const own = pawnFiles[c], opp = pawnFiles[1 - c];
+      for (let f = 0; f < 8; f++) {
+        if (own[f] > 1) pawnScore[c] -= 12 * (own[f] - 1);
+        if (own[f] && !(f > 0 && own[f - 1]) && !(f < 7 && own[f + 1])) pawnScore[c] -= 15;
+      }
+      for (const s of pawns[c]) {
+        const f = fileOf(s), r = rankOf(s);
+        const rel = c === 0 ? r : 7 - r;
+        let passed = true;
+        for (let df = -1; df <= 1 && passed; df++) {
+          const ff = f + df;
+          if (ff < 0 || ff > 7 || !opp[ff]) continue;
+          for (const os of pawns[1 - c]) {
+            if (fileOf(os) !== ff) continue;
+            if (c === 0 ? rankOf(os) > r : rankOf(os) < r) { passed = false; break; }
+          }
+        }
+        if (passed) pawnScore[c] += PASSED_BONUS[rel] * (1.5 - phase * 0.5);
+      }
+    }
+
+    // 中央支配・展開
+    const center = [0, 0], dev = [0, 0];
+    for (const s of CENTER) { center[0] += attW[s]; center[1] += attB[s]; }
+    for (let c = 0; c < 2; c++) {
+      const starts = MINOR_START[c === 0 ? WHITE : BLACK];
+      const sign = c === 0 ? 1 : -1;
+      let d = 0;
+      for (const s of starts) {
+        const p = b[s] * sign;
+        if (p !== KNIGHT && p !== BISHOP) d += 1;
+      }
+      const ks = pos.kingSq[c];
+      const kf = fileOf(ks), kr = rankOf(ks);
+      const homeRank = c === 0 ? 0 : 7;
+      if (kr === homeRank && (kf <= 2 || kf >= 6)) d += 2; // キャスリング済み相当
+      else if (kr !== homeRank) d -= 1; // 序盤に王が出歩く
+      dev[c] = d * phase;
+    }
+
+    return { mat, pst, mob, kingAtt, shield, hanging, threats, pawnScore, center, dev, phase, npm };
+  }
+
+  const DEFAULT_WEIGHTS = {
+    material: 1, pst: 1, mobility: 2, oppMobility: 2, attack: 4, defense: 4,
+    shield: 6, oppShield: 6, hanging: 0.3, oppHanging: 0.3, threats: 3, oppThreats: 3,
+    pawns: 1, center: 3, development: 12, random: 0,
+  };
+
+  /** 性格の重みと視点 (me) から評価関数を作る。返す関数は手番側から見たスコアを返す。 */
+  function makeEvaluator(weights, me) {
+    const w = Object.assign({}, DEFAULT_WEIGHTS, weights || {});
+    const m = me === WHITE ? 0 : 1, t = 1 - m;
+    return function evaluate(pos) {
+      const f = features(pos);
+      const stmIsMe = pos.side === me;
+      // 手番側の浮き駒は逃げられるので半分に
+      const hangMe = f.hanging[m] * (stmIsMe ? 0.5 : 1);
+      const hangThem = f.hanging[t] * (stmIsMe ? 1 : 0.5);
+      let s = w.material * (f.mat[m] - f.mat[t])
+        + w.pst * (f.pst[m] - f.pst[t])
+        + w.mobility * f.mob[m] - w.oppMobility * f.mob[t]
+        + w.attack * f.kingAtt[m] - w.defense * f.kingAtt[t]
+        + w.shield * f.shield[m] - w.oppShield * f.shield[t]
+        - w.hanging * hangMe + w.oppHanging * hangThem
+        + w.threats * f.threats[m] - w.oppThreats * f.threats[t]
+        + w.pawns * (f.pawnScore[m] - f.pawnScore[t])
+        + w.center * (f.center[m] - f.center[t])
+        + w.development * (f.dev[m] - f.dev[t]);
+      if (w.random) {
+        const r = ((pos.h1 >>> 5) % 2001) / 1000 - 1; // -1..1 (局面ごとに固定)
+        s += r * w.random;
+      }
+      s = Math.round(s);
+      return stmIsMe ? s : -s;
+    };
+  }
+
+  /**
+   * 性格一覧。margin は「総合評価の最善手から何 cp までなら妥協して自分の好みを通すか」。
+   */
+  const PERSONALITIES = [
+    {
+      id: 'balanced', name: '参謀', trait: '均衡型', icon: '📐', mark: '参', color: '#3E6E9E',
+      motto: '計算上、これが最善です。',
+      desc: '総合的な評価関数で最善手を選ぶ。迷ったらこれ。',
+      margin: 0,
+      weights: {},
+    },
+    {
+      id: 'aggressive', name: '猛将', trait: '攻撃型', icon: '🔥', mark: '猛', color: '#C24B3A',
+      motto: '敵王の首を取りに行く！',
+      desc: '敵王への圧力・駒の活動力を重視し、多少の損は気にしない。',
+      margin: 130,
+      weights: {
+        material: 0.85, pst: 0.9, mobility: 3, oppMobility: 1, attack: 14, defense: 1,
+        shield: 1, oppShield: 12, hanging: 0.15, oppHanging: 0.4, threats: 8, oppThreats: 1,
+        pawns: 0.5, center: 3, development: 14,
+      },
+    },
+    {
+      id: 'defensive', name: '守将', trait: '防御型', icon: '🛡️', mark: '守', color: '#3C8A5A',
+      motto: 'まずは守りを固めるのが肝要。',
+      desc: '自王の安全と駒の連携を最優先。相手の攻め筋を先に潰す。',
+      margin: 45,
+      weights: {
+        material: 1.1, pst: 1, mobility: 1, oppMobility: 3, attack: 1, defense: 14,
+        shield: 16, oppShield: 2, hanging: 0.8, oppHanging: 0.2, threats: 1, oppThreats: 7,
+        pawns: 1.5, center: 2, development: 10,
+      },
+    },
+    {
+      id: 'tricky', name: '策士', trait: '撹乱型', icon: '🌀', mark: '策', color: '#8557B3',
+      motto: 'ふふ、相手を惑わせてやりましょう。',
+      desc: '相手の選択肢を奪い、脅しを重ねて混乱を誘う。読みにくい手を好む。',
+      margin: 150,
+      weights: {
+        material: 0.9, pst: 0.6, mobility: 4, oppMobility: 7, attack: 6, defense: 2,
+        shield: 3, oppShield: 4, hanging: 0.2, oppHanging: 0.5, threats: 7, oppThreats: 2,
+        pawns: 0.3, center: 1, development: 8, random: 30,
+      },
+    },
+    {
+      id: 'positional', name: '名将', trait: '大局型', icon: '🏔️', mark: '名', color: '#A8842A',
+      motto: '大局を見よ。形が良ければ勝ちは後からついてくる。',
+      desc: '駒の配置・ポーン構造・中央支配といった長期的な優位を積み上げる。',
+      margin: 60,
+      weights: {
+        material: 1, pst: 1.6, mobility: 3, oppMobility: 2, attack: 2, defense: 3,
+        shield: 8, oppShield: 4, hanging: 0.3, oppHanging: 0.3, threats: 1, oppThreats: 1,
+        pawns: 2.5, center: 7, development: 18,
+      },
+    },
+    {
+      id: 'material', name: '商人', trait: '実利型', icon: '💰', mark: '商', color: '#C27A2C',
+      motto: '駒は取れるときに取る。損はしない。',
+      desc: '駒得を何より重視。堅実に取って、堅実に守る。',
+      margin: 80,
+      weights: {
+        material: 1.5, pst: 0.5, mobility: 1, oppMobility: 1, attack: 1, defense: 3,
+        shield: 5, oppShield: 1, hanging: 0.6, oppHanging: 0.8, threats: 2, oppThreats: 1,
+        pawns: 0.8, center: 1, development: 6,
+      },
+    },
+  ];
+
+  const personalityById = (id) => PERSONALITIES.find((p) => p.id === id);
+
+  return { features, makeEvaluator, PERSONALITIES, personalityById, DEFAULT_WEIGHTS, VALUES };
+});
+
+/*
+ * search.js — αβ探索 (反復深化・静止探索・置換表・キラー/ヒストリー)
+ *
+ * think()     : 相手 AI 用。最善手を 1 つ返す。
+ * rankMoves() : 軍師用。候補手すべてに正確なスコアを付けて返す。
+ * どちらも非同期で、区切りごとに UI に制御を戻す。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./chess.js'));
+  else root.Search = factory(root.Chess);
+})(typeof self !== 'undefined' ? self : this, function (Chess) {
+  'use strict';
+
+  const { VALUES, F_CAPTURE, F_PROMO, KING } = Chess;
+  const MATE = 100000, INF = 1000000, MATE_BOUND = MATE - 1000;
+  const TT_SIZE = 1 << 18, TT_MASK = TT_SIZE - 1;
+  const TT_EXACT = 1, TT_LOWER = 2, TT_UPPER = 3;
+  const tt = {
+    k1: new Int32Array(TT_SIZE), k2: new Int32Array(TT_SIZE), depth: new Int8Array(TT_SIZE),
+    flag: new Int8Array(TT_SIZE), score: new Int32Array(TT_SIZE), move: new Int32Array(TT_SIZE),
+  };
+  const MAX_PLY = 64;
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
+
+  function ttClear() { tt.k1.fill(0); tt.k2.fill(0); tt.depth.fill(-1); tt.flag.fill(0); }
+  function scoreToTT(s, ply) { return s > MATE_BOUND ? s + ply : s < -MATE_BOUND ? s - ply : s; }
+  function scoreFromTT(s, ply) { return s > MATE_BOUND ? s - ply : s < -MATE_BOUND ? s + ply : s; }
+
+  class Searcher {
+    constructor(pos, evalFn, opts) {
+      this.pos = pos;
+      this.eval = evalFn;
+      this.nodes = 0;
+      this.deadline = opts && opts.timeMs ? now() + opts.timeMs : Infinity;
+      this.stopped = false;
+      this.killers = [];
+      for (let i = 0; i < MAX_PLY; i++) this.killers.push([0, 0]);
+      this.hist = new Int32Array(128 * 128);
+    }
+
+    checkTime() {
+      if ((this.nodes & 2047) === 0 && now() > this.deadline) this.stopped = true;
+    }
+
+    orderMoves(moves, ttMove, ply) {
+      const k = this.killers[ply];
+      for (const m of moves) {
+        let s;
+        if (m.enc === ttMove) s = 10000000;
+        else if (m.flags & F_CAPTURE) s = 1000000 + VALUES[Math.abs(m.captured)] * 10 - VALUES[Math.abs(m.piece)];
+        else if (m.flags & F_PROMO) s = 900000 + VALUES[m.promo];
+        else if (m.enc === k[0]) s = 800000;
+        else if (m.enc === k[1]) s = 790000;
+        else s = this.hist[(m.from << 7) | m.to];
+        if (m.flags & F_PROMO) s += VALUES[m.promo];
+        m.score = s;
+      }
+      moves.sort((a, b) => b.score - a.score);
+    }
+
+    negamax(depth, alpha, beta, ply) {
+      this.nodes++;
+      this.checkTime();
+      if (this.stopped) return 0;
+      const pos = this.pos;
+      if (ply > 0 && (pos.isRepetition() || pos.halfmove >= 100)) return 0;
+      const inCheck = pos.inCheck();
+      if (inCheck) depth++;
+      if (depth <= 0 || ply >= MAX_PLY - 1) return this.quiesce(alpha, beta, ply, 0);
+
+      // 詰み距離枝刈り
+      const mateAlpha = -MATE + ply, mateBeta = MATE - ply - 1;
+      if (alpha < mateAlpha) alpha = mateAlpha;
+      if (beta > mateBeta) beta = mateBeta;
+      if (alpha >= beta) return alpha;
+
+      const idx = pos.h1 & TT_MASK;
+      let ttMove = 0;
+      if (tt.k1[idx] === pos.h1 && tt.k2[idx] === pos.h2) {
+        ttMove = tt.move[idx];
+        if (tt.depth[idx] >= depth && ply > 0) {
+          const s = scoreFromTT(tt.score[idx], ply), f = tt.flag[idx];
+          if (f === TT_EXACT) return s;
+          if (f === TT_LOWER && s >= beta) return s;
+          if (f === TT_UPPER && s <= alpha) return s;
+        }
+      }
+
+      const moves = pos.generatePseudo(false);
+      this.orderMoves(moves, ttMove, ply);
+      const us = pos.side;
+      let best = -INF, bestMove = 0, legal = 0, flag = TT_UPPER;
+      for (let i = 0; i < moves.length; i++) {
+        const m = moves[i];
+        pos.make(m);
+        if (pos.kingAttacked(us)) { pos.unmake(); continue; }
+        legal++;
+        let score;
+        if (legal > 1 && depth >= 3 && !inCheck && !(m.flags & (F_CAPTURE | F_PROMO)) && i >= 4) {
+          // Late Move Reduction
+          score = -this.negamax(depth - 2, -alpha - 1, -alpha, ply + 1);
+          if (score > alpha) score = -this.negamax(depth - 1, -beta, -alpha, ply + 1);
+        } else {
+          score = -this.negamax(depth - 1, -beta, -alpha, ply + 1);
+        }
+        pos.unmake();
+        if (this.stopped) return 0;
+        if (score > best) {
+          best = score; bestMove = m.enc;
+          if (score > alpha) {
+            alpha = score; flag = TT_EXACT;
+            if (alpha >= beta) {
+              flag = TT_LOWER;
+              if (!(m.flags & F_CAPTURE)) {
+                const k = this.killers[ply];
+                if (k[0] !== m.enc) { k[1] = k[0]; k[0] = m.enc; }
+                this.hist[(m.from << 7) | m.to] += depth * depth;
+              }
+              break;
+            }
+          }
+        }
+      }
+      if (legal === 0) return inCheck ? -MATE + ply : 0;
+      tt.k1[idx] = pos.h1; tt.k2[idx] = pos.h2; tt.depth[idx] = depth; tt.flag[idx] = flag;
+      tt.score[idx] = scoreToTT(best, ply); tt.move[idx] = bestMove;
+      return best;
+    }
+
+    quiesce(alpha, beta, ply, qdepth) {
+      this.nodes++;
+      this.checkTime();
+      if (this.stopped) return 0;
+      const pos = this.pos;
+      const inCheck = qdepth < 3 && pos.inCheck();
+      let stand = -INF;
+      if (!inCheck) {
+        stand = this.eval(pos);
+        if (stand >= beta) return stand;
+        if (stand > alpha) alpha = stand;
+      }
+      if (ply >= MAX_PLY - 1) return inCheck ? this.eval(pos) : stand;
+      const moves = pos.generatePseudo(!inCheck);
+      this.orderMoves(moves, 0, ply);
+      const us = pos.side;
+      let best = stand, legal = 0;
+      for (let i = 0; i < moves.length; i++) {
+        const m = moves[i];
+        if (!inCheck && (m.flags & F_CAPTURE) && !(m.flags & F_PROMO) &&
+            stand + VALUES[Math.abs(m.captured)] + 200 < alpha) continue; // delta pruning
+        pos.make(m);
+        if (pos.kingAttacked(us)) { pos.unmake(); continue; }
+        legal++;
+        const score = -this.quiesce(-beta, -alpha, ply + 1, qdepth + 1);
+        pos.unmake();
+        if (this.stopped) return 0;
+        if (score > best) {
+          best = score;
+          if (score > alpha) { alpha = score; if (alpha >= beta) break; }
+        }
+      }
+      if (inCheck && legal === 0) return -MATE + ply;
+      return best;
+    }
+  }
+
+  /** 置換表から読み筋を復元する */
+  function extractPV(pos, maxLen) {
+    const pv = [];
+    let made = 0;
+    for (let i = 0; i < maxLen; i++) {
+      const idx = pos.h1 & TT_MASK;
+      if (tt.k1[idx] !== pos.h1 || tt.k2[idx] !== pos.h2) break;
+      const enc = tt.move[idx];
+      const m = pos.legalMoves().find((x) => x.enc === enc);
+      if (!m) break;
+      pv.push(m);
+      pos.make(m); made++;
+      if (pos.isRepetition()) break;
+    }
+    while (made--) pos.unmake();
+    return pv;
+  }
+
+  /**
+   * 最善手探索 (相手 AI 用)。
+   * opts: { maxDepth, timeMs, onDepth }
+   */
+  async function think(pos0, evalFn, opts) {
+    opts = opts || {};
+    const maxDepth = opts.maxDepth || 4;
+    const pos = pos0.clone();
+    ttClear();
+    const S = new Searcher(pos, evalFn, { timeMs: opts.timeMs });
+    let moves = pos.legalMoves();
+    if (moves.length === 0) return null;
+    let best = { move: moves[0], score: 0, depth: 0, pv: [moves[0]], nodes: 0 };
+    const t0 = now();
+    await yieldToUI();
+    for (let d = 1; d <= maxDepth; d++) {
+      let alpha = -INF, bestThis = null, bestScore = -INF;
+      moves = [best.move].concat(moves.filter((m) => m !== best.move));
+      for (const m of moves) {
+        pos.make(m);
+        let score = -S.negamax(d - 1, -INF, -alpha, 1);
+        pos.unmake();
+        if (S.stopped) break;
+        if (score > bestScore) { bestScore = score; bestThis = m; if (score > alpha) alpha = score; }
+      }
+      if (S.stopped) break;
+      pos.make(bestThis);
+      const pv = [bestThis].concat(extractPV(pos, d));
+      pos.unmake();
+      best = { move: bestThis, score: bestScore, depth: d, pv, nodes: S.nodes, timeMs: now() - t0 };
+      if (opts.onDepth) opts.onDepth(best);
+      if (Math.abs(bestScore) > MATE_BOUND) break;
+      await yieldToUI();
+      if (opts.shouldAbort && opts.shouldAbort()) return null;
+    }
+    best.timeMs = now() - t0;
+    return best;
+  }
+
+  /**
+   * 全候補手 (または opts.moves で限定) に正確な評価値を付けて降順に返す (軍師用)。
+   * opts: { moves: [enc...], timeMs, shouldAbort, onProgress }
+   * 中断時は null を返す。
+   */
+  async function rankMoves(pos0, evalFn, depth, opts) {
+    opts = opts || {};
+    const pos = pos0.clone();
+    ttClear();
+    const S = new Searcher(pos, evalFn, { timeMs: opts.timeMs });
+    let list = pos.legalMoves();
+    if (opts.moves) {
+      const set = new Set(opts.moves);
+      list = list.filter((m) => set.has(m.enc));
+    }
+    let results = list.map((m) => ({ move: m, score: 0, pv: [m] }));
+    const t0 = now();
+    for (let d = 1; d <= depth; d++) {
+      let count = 0;
+      for (const r of results) {
+        pos.make(r.move);
+        const score = -S.negamax(d - 1, -INF, INF, 1);
+        if (!S.stopped) {
+          r.score = score;
+          r.pv = [r.move].concat(extractPV(pos, d));
+        }
+        pos.unmake();
+        if (S.stopped) break;
+        if ((++count & 7) === 0) {
+          await yieldToUI();
+          if (opts.shouldAbort && opts.shouldAbort()) return null;
+        }
+      }
+      if (S.stopped) break;
+      results.sort((a, b) => b.score - a.score);
+      if (opts.onProgress) opts.onProgress(d, results);
+      await yieldToUI();
+      if (opts.shouldAbort && opts.shouldAbort()) return null;
+    }
+    results.sort((a, b) => b.score - a.score);
+    results.nodes = S.nodes;
+    results.timeMs = now() - t0;
+    return results;
+  }
+
+  const isMateScore = (s) => Math.abs(s) > MATE_BOUND;
+  const mateIn = (s) => (s > 0 ? Math.ceil((MATE - s) / 2) : -Math.ceil((MATE + s) / 2));
+
+  return { think, rankMoves, Searcher, MATE, INF, MATE_BOUND, isMateScore, mateIn, ttClear, yieldToUI };
+});
+
+/*
+ * advisor.js — 軍師の進言
+ *
+ * 1. 総合評価 (参謀) で全候補手を採点する
+ * 2. 各性格ごとに「総合評価から margin 以内の手」を候補に絞り、その性格の評価で最良の手を選ぶ
+ *    → 性格が出つつ、大悪手は提示されない
+ * 3. 手の特徴 (チェック・駒取り・展開…) を抽出し、性格に合わせたセリフを付ける
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./chess.js'), require('./eval.js'), require('./search.js'));
+  else root.Advisor = factory(root.Chess, root.Eval, root.Search);
+})(typeof self !== 'undefined' ? self : this, function (Chess, Eval, Search) {
+  'use strict';
+
+  const { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, WHITE, VALUES, F_CAPTURE, F_CASTLE, F_PROMO, F_EP,
+    KNIGHT_OFFS, BISHOP_OFFS, ROOK_OFFS, KING_OFFS, onBoard, fileOf, rankOf, sqName } = Chess;
+
+  const PIECE_JA = ['', 'ポーン', 'ナイト', 'ビショップ', 'ルーク', 'クイーン', 'キング'];
+
+  /** sq にある駒 (color 側) が攻撃しているマスの一覧 */
+  function attacksFrom(pos, sq) {
+    const b = pos.board, p = b[sq];
+    const out = [];
+    const pt = Math.abs(p), color = p > 0 ? 1 : -1;
+    if (pt === PAWN) {
+      const fwd = 16 * color;
+      for (const d of [fwd - 1, fwd + 1]) if (onBoard(sq + d)) out.push(sq + d);
+    } else if (pt === KNIGHT || pt === KING) {
+      const offs = pt === KNIGHT ? KNIGHT_OFFS : KING_OFFS;
+      for (const d of offs) if (onBoard(sq + d)) out.push(sq + d);
+    } else {
+      const offs = pt === BISHOP ? BISHOP_OFFS : pt === ROOK ? ROOK_OFFS : KING_OFFS;
+      for (const d of offs) {
+        for (let t = sq + d; onBoard(t); t += d) { out.push(t); if (b[t]) break; }
+      }
+    }
+    return out;
+  }
+
+  /** 静的な「浮き駒」一覧: color 側の駒で、敵に攻撃され味方に守られていないもの */
+  function hangingPieces(pos, color) {
+    const out = [];
+    const b = pos.board;
+    for (let s = 0; s < 128; s++) {
+      if (s & 0x88) { s += 7; continue; }
+      const p = b[s];
+      if (!p || (p > 0 ? 1 : -1) !== color || Math.abs(p) === KING) continue;
+      if (pos.isAttacked(s, -color) && !pos.isAttacked(s, color)) out.push(s);
+    }
+    return out;
+  }
+
+  /** sq を攻撃している color 側の駒のうち最も安い駒の価値 (攻撃されていなければ Infinity) */
+  function lowestAttackerValue(pos, sq, color) {
+    const b = pos.board;
+    let best = Infinity;
+    for (let s = 0; s < 128; s++) {
+      if (s & 0x88) { s += 7; continue; }
+      const p = b[s];
+      if (!p || (p > 0 ? 1 : -1) !== color) continue;
+      const v = VALUES[Math.abs(p)];
+      if (v >= best) continue;
+      if (attacksFrom(pos, s).includes(sq)) best = v;
+    }
+    return best;
+  }
+
+  /**
+   * 手の特徴を抽出する。pos は手を指す前の局面。
+   */
+  function moveFeatures(pos, m) {
+    const us = pos.side, them = -us;
+    const b = pos.board;
+    const pt = Math.abs(m.piece);
+    const f = { piece: pt, pieceName: PIECE_JA[pt], to: sqName(m.to), from: sqName(m.from), tags: [] };
+    const capVal = m.captured ? VALUES[Math.abs(m.captured)] : 0;
+    f.capture = !!(m.flags & F_CAPTURE);
+    f.capturedName = m.captured ? PIECE_JA[Math.abs(m.captured)] : '';
+    f.castle = !!(m.flags & F_CASTLE);
+    f.promo = !!(m.flags & F_PROMO);
+    f.enPassant = !!(m.flags & F_EP);
+    f.kingMove = pt === KING && !f.castle;
+    f.queenMove = pt === QUEEN;
+    const homeRank = us === WHITE ? 0 : 7;
+    f.develop = (pt === KNIGHT || pt === BISHOP) && rankOf(m.from) === homeRank && rankOf(m.to) !== homeRank;
+    f.centerPawn = pt === PAWN && [51, 52, 67, 68].includes(m.to);
+    const relTo = us === WHITE ? rankOf(m.to) : 7 - rankOf(m.to);
+    f.pawnStorm = pt === PAWN && relTo >= 4 && !f.capture;
+    const relFrom = us === WHITE ? rankOf(m.from) : 7 - rankOf(m.from);
+    f.retreat = pt !== PAWN && pt !== KING && relTo < relFrom;
+    f.rookOpenFile = false;
+    if (pt === ROOK) {
+      let open = true;
+      for (let r = 0; r < 8; r++) if (Math.abs(b[(r << 4) | fileOf(m.to)]) === PAWN) { open = false; break; }
+      f.rookOpenFile = open;
+    }
+
+    // 指す前: 自陣の浮き駒
+    const hangBefore = hangingPieces(pos, us);
+    const destAttackedBefore = pos.isAttacked(m.to, them);
+
+    pos.make(m);
+    f.check = pos.inCheck();
+    const replies = pos.legalMoves();
+    f.mate = f.check && replies.length === 0;
+    f.stalemate = !f.check && replies.length === 0;
+    f.replies = replies.length;
+    // 動かした駒からの脅威
+    const targets = attacksFrom(pos, m.to);
+    const threatened = [];
+    for (const t of targets) {
+      const tp = b[t];
+      if (!tp || (tp > 0 ? 1 : -1) !== them) continue;
+      const tv = VALUES[Math.abs(tp)];
+      if (Math.abs(tp) === KING) continue;
+      const defended = pos.isAttacked(t, them);
+      if (!defended || tv > VALUES[pt]) threatened.push({ sq: t, piece: Math.abs(tp), value: tv, defended });
+    }
+    threatened.sort((a, b2) => b2.value - a.value);
+    f.threats = threatened;
+    f.fork = threatened.length >= 2 || (threatened.length >= 1 && f.check);
+    f.bigThreat = threatened.length >= 1 && threatened[0].value >= 300;
+    // 指した後の自陣の浮き駒
+    const hangAfter = hangingPieces(pos, us);
+    f.defends = hangBefore.length > 0 && hangAfter.length < hangBefore.length;
+    f.escapes = hangBefore.includes(m.from) && !hangAfter.includes(m.to);
+    f.leavesHanging = hangAfter.includes(m.to);
+    // 犠牲 (着地マスで取られると、取り返しても損する)
+    const destDefended = pos.isAttacked(m.to, us);
+    let loss = 0;
+    if (destAttackedBefore && pt !== KING) {
+      const attacker = lowestAttackerValue(pos, m.to, them);
+      loss = (destDefended ? Math.max(0, VALUES[pt] - attacker) : VALUES[pt]) - capVal;
+    }
+    f.sacrifice = loss >= 200 && !f.mate;
+    f.offersTrade = destAttackedBefore && destDefended && !f.capture && loss < 200 && loss > -200 && pt !== KING && pt !== PAWN;
+    // 守り: 王周辺への敵の攻撃数の変化を簡易に
+    const ks = pos.kingSq[us === WHITE ? 0 : 1];
+    let enemyNearKing = 0;
+    for (const d of KING_OFFS) if (onBoard(ks + d) && pos.isAttacked(ks + d, them)) enemyNearKing++;
+    f.kingPressure = enemyNearKing;
+    // 相手の王に迫る (着地マスが敵王に隣接 or 2 マス以内)
+    const eks = pos.kingSq[them === WHITE ? 0 : 1];
+    const dist = Math.max(Math.abs(fileOf(m.to) - fileOf(eks)), Math.abs(rankOf(m.to) - rankOf(eks)));
+    f.nearEnemyKing = dist <= 2 && pt !== PAWN;
+    pos.unmake();
+
+    f.goodCapture = f.capture && (capVal >= VALUES[pt] || !destAttackedBefore);
+    f.trade = f.capture && capVal === VALUES[pt] && destAttackedBefore;
+    f.winsMaterial = f.capture && (capVal > VALUES[pt] || !destAttackedBefore) && capVal > 0;
+
+    // タグ (UI 用チップ)
+    if (f.mate) { f.tags.push('詰み'); return f; }
+    if (f.check) f.tags.push('チェック');
+    if (f.winsMaterial) f.tags.push('駒得');
+    else if (f.trade) f.tags.push('交換');
+    else if (f.capture) f.tags.push('駒取り');
+    if (f.sacrifice) f.tags.push('犠牲');
+    else if (f.offersTrade) f.tags.push('交換を打診');
+    if (f.promo) f.tags.push('昇格');
+    if (f.castle) f.tags.push('キャスリング');
+    if (f.fork) f.tags.push('両取り');
+    else if (f.bigThreat) f.tags.push('脅し');
+    if (f.develop) f.tags.push('展開');
+    if (f.centerPawn) f.tags.push('中央');
+    if (f.rookOpenFile) f.tags.push('開いた筋');
+    if (f.escapes) f.tags.push('退避');
+    else if (f.defends) f.tags.push('守り');
+    if (f.pawnStorm) f.tags.push('ポーン前進');
+    if (f.nearEnemyKing && !f.check) f.tags.push('敵王に接近');
+    if (f.leavesHanging) f.tags.push('取られる駒あり');
+    return f;
+  }
+
+  /** 特徴から「主題」を 1 つ決める */
+  function primaryFeature(f) {
+    if (f.mate) return 'mate';
+    if (f.check && f.fork) return 'fork';
+    if (f.sacrifice) return 'sacrifice';
+    if (f.winsMaterial) return 'win';
+    if (f.check) return 'check';
+    if (f.fork) return 'fork';
+    if (f.promo) return 'promo';
+    if (f.castle) return 'castle';
+    if (f.trade) return 'trade';
+    if (f.escapes) return 'escape';
+    if (f.bigThreat) return 'threat';
+    if (f.defends) return 'defend';
+    if (f.develop) return 'develop';
+    if (f.centerPawn) return 'center';
+    if (f.rookOpenFile) return 'openfile';
+    if (f.pawnStorm) return 'push';
+    if (f.nearEnemyKing) return 'approach';
+    if (f.kingMove) return 'king';
+    if (f.retreat) return 'retreat';
+    return 'quiet';
+  }
+
+  // {san} {piece} {to} {captured} {target} が置換される
+  const LINES = {
+    generic: {
+      mate: ['{san} で詰みです。勝負あり！'],
+      fork: ['{san}。複数の駒に当たっています。'],
+      sacrifice: ['{san} は駒を捨てる手ですが、見返りはあります。'],
+      win: ['{san} で{captured}を取れます。'],
+      check: ['{san} でチェック。相手に手を選ばせません。'],
+      promo: ['{san}。昇格して大駒を増やします。'],
+      castle: ['{san}。王を安全な場所へ。'],
+      trade: ['{san} で駒を交換します。'],
+      escape: ['{san}。狙われている駒を逃がします。'],
+      threat: ['{san}。{target}を狙います。'],
+      defend: ['{san}。狙われていた駒を守ります。'],
+      develop: ['{san}。{piece}を展開します。'],
+      center: ['{san}。中央を押さえます。'],
+      openfile: ['{san}。開いた筋にルークを据えます。'],
+      push: ['{san}。ポーンを前進させて圧力をかけます。'],
+      approach: ['{san}。敵王の近くに駒を送り込みます。'],
+      king: ['{san}。王を動かします。'],
+      retreat: ['{san}。一旦引いて態勢を整えます。'],
+      quiet: ['{san}。地味ですが理にかなった手です。'],
+    },
+    balanced: {
+      mate: ['{san}。詰みです。計算に狂いはありません。'],
+      win: ['{san}。{captured}を安全に取れます。損得勘定で明らかに有利です。'],
+      check: ['{san} でチェック。相手の応手を限定した上で、局面を有利に運べます。'],
+      develop: ['{san}。{piece}の展開。序盤の基本に忠実な手です。'],
+      quiet: ['{san}。派手さはありませんが、総合評価で最も点数の高い手です。'],
+      trade: ['{san}。交換して局面を整理します。バランスは崩れません。'],
+      center: ['{san}。中央を確保。教科書どおりです。'],
+    },
+    aggressive: {
+      mate: ['{san}！！ 敵王、討ち取ったり！'],
+      fork: ['{san}！ 二兎を追わせて両方いただく。逃げ場はないぞ！'],
+      sacrifice: ['{san}！ 駒を捨ててでも攻める。臆病者に勝利はない！'],
+      win: ['{san}！ {captured}を叩き斬れ！'],
+      check: ['{san} で王手！ 追い立てろ、息をつかせるな！'],
+      threat: ['{san}！ {target}に狙いを定めた。さあ、どう逃げる？'],
+      approach: ['{san}！ 敵の本陣に斬り込むぞ！'],
+      push: ['{san}！ ポーンで敵陣を蹂躙しろ！'],
+      develop: ['{san}。まずは兵を前に出す。攻撃はそれからだ！'],
+      castle: ['{san}。王を片付けて、あとは攻めるだけだ！'],
+      quiet: ['{san}。地味だが、次の一撃への布石だ！'],
+      center: ['{san}！ 中央を制する者が戦場を制する！'],
+      trade: ['{san}！ 斬り合い上等！'],
+      escape: ['{san}。一度下がるが、これは助走だ。'],
+      defend: ['{san}。……守るのは癪だが、ここは仕方ない。'],
+    },
+    defensive: {
+      mate: ['{san}。詰みです。守り切った甲斐がありました。'],
+      escape: ['{san}。狙われた駒はまず逃がす。基本です。'],
+      defend: ['{san}。浮いた駒を守っておきましょう。備えあれば憂いなし。'],
+      castle: ['{san}。王の安全が第一。城壁を築きましょう。'],
+      win: ['{san}。安全に{captured}を取れます。急がば回れ、ですが取れるものは取ります。'],
+      trade: ['{san}。交換して相手の攻め駒を減らしましょう。'],
+      check: ['{san}。王手で時間を稼ぎ、態勢を整えます。'],
+      develop: ['{san}。{piece}を出して守りの網を張ります。'],
+      retreat: ['{san}。無理はしません。陣形を固めるのが先です。'],
+      quiet: ['{san}。堅実に。崩れなければ負けはしません。'],
+      center: ['{san}。中央を固めておけば、相手の攻めは通りません。'],
+      king: ['{san}。王を安全な場所へ。'],
+      threat: ['{san}。{target}を牽制しつつ、守りも保てます。'],
+      push: ['{san}。ポーンで壁を作ります。'],
+      sacrifice: ['{san}。……私の趣味ではありませんが、この犠牲は計算済みです。'],
+      fork: ['{san}。両取りの形。守りながら得を狙えます。'],
+    },
+    tricky: {
+      mate: ['{san}……ふふ、気づいていましたか？ 詰みですよ。'],
+      fork: ['{san}。二つ同時に狙う。どちらを守っても、もう片方が落ちる。'],
+      sacrifice: ['{san}。餌を撒きましょう。食いついてきたら、こちらのものです。'],
+      threat: ['{san}。{target}にちょっかいを出して、相手の手を狂わせましょう。'],
+      check: ['{san} で王手。相手の予定を狂わせるのが私の仕事です。'],
+      approach: ['{san}。敵王のそばに駒を置いて、嫌な予感を植え付けてやります。'],
+      quiet: ['{san}。一見無意味な手。だからこそ相手は読めない。'],
+      push: ['{san}。ポーンを突いて陣形を乱す。相手はきっと嫌がりますよ。'],
+      develop: ['{san}。駒を出しつつ、相手の選択肢を狭めます。'],
+      win: ['{san}。{captured}をいただきましょう。相手が気づく前に。'],
+      trade: ['{san}。交換に見せかけて、相手の陣形を崩します。'],
+      retreat: ['{san}。引くと見せかけて……ここからが本番です。'],
+      escape: ['{san}。逃げるついでに、次の罠を仕掛けておきます。'],
+      center: ['{san}。中央で相手の駒を窮屈にさせましょう。'],
+      castle: ['{san}。まずは自陣を整えて、それから仕掛けましょう。'],
+      defend: ['{san}。守りつつ、相手に見えない伏線を張ります。'],
+    },
+    positional: {
+      mate: ['{san}。詰みです。積み重ねた形の勝利です。'],
+      develop: ['{san}。{piece}を良い位置に。駒の配置こそ勝利の礎です。'],
+      center: ['{san}。中央を制する。すべてはここから始まります。'],
+      castle: ['{san}。王を収め、ルークを連結する。理想の形です。'],
+      openfile: ['{san}。開いた筋にルークを据えます。長期的な優位です。'],
+      push: ['{san}。ポーンで空間を稼ぎます。相手は窮屈になるでしょう。'],
+      quiet: ['{san}。地味ですが、駒の配置が改善されます。形の良さは裏切りません。'],
+      win: ['{san}。{captured}を取ります。形を崩さずに得ができるなら、断る理由はありません。'],
+      trade: ['{san}。交換して、こちらの駒配置の良さを際立たせます。'],
+      retreat: ['{san}。再配置です。良い駒はもっと良い場所へ。'],
+      escape: ['{san}。駒を逃がしつつ、より良い位置に置き直します。'],
+      defend: ['{san}。駒の連携を保ちます。孤立した駒は弱いものです。'],
+      check: ['{san}。王手をかけて、相手の王を悪い位置に追いやります。'],
+      threat: ['{san}。{target}を圧迫し、相手の形を崩します。'],
+      sacrifice: ['{san}。駒を捨てても、形の優位がそれを補います。'],
+      fork: ['{san}。良い配置は自然と戦術を生むものです。'],
+      approach: ['{san}。駒を敵陣に据え、じわじわと締め上げます。'],
+    },
+    material: {
+      mate: ['{san}。詰みだ。勝ちは何より高く売れる。'],
+      win: ['{san}！ {captured}はタダ同然。取らない手はない！'],
+      trade: ['{san}。等価交換だ。損はしていない。'],
+      escape: ['{san}。大事な駒だ。取られてたまるか。'],
+      defend: ['{san}。駒を守る。損失はゼロに抑えるのが商売の鉄則。'],
+      promo: ['{san}。ポーンがクイーンに化ける。最高の投資だ！'],
+      quiet: ['{san}。今は取れる駒がない。損をしない手を選ぶ。'],
+      check: ['{san}。王手だが、狙いはその先の駒だ。'],
+      threat: ['{san}。{target}を狙う。次で回収する。'],
+      fork: ['{san}。両取り。どちらかは必ずいただく。'],
+      develop: ['{san}。駒を働かせる。遊んでいる駒は損だ。'],
+      castle: ['{san}。王が安全なら、安心して稼げる。'],
+      center: ['{san}。中央は良い商売の場だ。'],
+      push: ['{san}。ポーンを進めておけば、いずれ元が取れる。'],
+      sacrifice: ['{san}。……先行投資だ。ちゃんと回収できる見込みがある。'],
+      retreat: ['{san}。損切りも大事だ。'],
+      approach: ['{san}。敵王の近くには稼ぎの種が転がっている。'],
+    },
+  };
+
+  function fillTemplate(t, f, san) {
+    return t.replace('{san}', san)
+      .replace('{piece}', f.pieceName)
+      .replace('{to}', f.to)
+      .replace('{captured}', f.capturedName || '駒')
+      .replace('{target}', f.threats && f.threats.length ? PIECE_JA[f.threats[0].piece] : '駒');
+  }
+
+  function comment(personality, f, san) {
+    const key = primaryFeature(f);
+    const table = LINES[personality.id] || {};
+    const pool = table[key] || LINES.generic[key] || LINES.generic.quiet;
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    return fillTemplate(t, f, san);
+  }
+
+  function formatScore(score) {
+    if (Search.isMateScore(score)) {
+      const n = Search.mateIn(score);
+      return n > 0 ? `詰み ${n} 手` : `被詰み ${-n} 手`;
+    }
+    const p = score / 100;
+    return (p > 0 ? '+' : '') + p.toFixed(1);
+  }
+
+  /**
+   * 軍師の進言を作る。
+   * opts: { depth, personalities, shouldAbort, onProgress }
+   * 戻り値: { cards: [...], neutral: [...], bestScore }
+   */
+  async function advise(pos, opts) {
+    opts = opts || {};
+    const depth = opts.depth || 3;
+    const personalities = opts.personalities || Eval.PERSONALITIES;
+    const me = pos.side;
+    const abort = opts.shouldAbort || (() => false);
+    const progress = opts.onProgress || (() => {});
+    const legal = pos.legalMoves();
+    if (legal.length === 0) return { cards: [], neutral: [], bestScore: 0 };
+
+    progress('参謀が全候補を採点中…');
+    const balanced = Eval.personalityById('balanced');
+    const neutral = await Search.rankMoves(pos, Eval.makeEvaluator(balanced.weights, me), depth, { shouldAbort: abort });
+    if (!neutral) return null;
+    const best = neutral[0].score;
+    const neutralScore = new Map(neutral.map((r) => [r.move.enc, r]));
+
+    const picks = [];
+    const used = new Set();
+    // 参謀 (総合最善) を先に確定させ、他の性格は重複時に別案を出せるようにする
+    const ordered = personalities.slice().sort((a, b) => (a.id === 'balanced' ? -1 : b.id === 'balanced' ? 1 : 0));
+    for (const p of ordered) {
+      if (abort()) return null;
+      let pick, alt = null;
+      if (p.id === 'balanced' || legal.length === 1) {
+        pick = neutral[0];
+      } else {
+        progress(`${p.name}(${p.trait})が検討中…`);
+        let cands;
+        if (Search.isMateScore(best) && best > 0) {
+          cands = neutral.filter((r) => r.score === best);
+        } else {
+          cands = neutral.filter((r) => r.score >= best - p.margin && !(Search.isMateScore(r.score) && r.score < 0));
+          if (cands.length < 3) cands = neutral.slice(0, 3);
+        }
+        cands = cands.slice(0, 12);
+        if (cands.length === 1) pick = cands[0];
+        else {
+          const ranked = await Search.rankMoves(pos, Eval.makeEvaluator(p.weights, me), depth, {
+            moves: cands.map((c) => c.move.enc), shouldAbort: abort,
+          });
+          if (!ranked) return null;
+          pick = ranked[0];
+          // 本命が他の軍師と同じなら、その性格にとって僅差の別案を出す
+          if (used.has(pick.move.enc)) {
+            const other = ranked.slice(1).find((r) => !used.has(r.move.enc) && pick.score - r.score <= p.margin * 0.6);
+            if (other) { alt = pick; pick = other; }
+          }
+        }
+      }
+      used.add(pick.move.enc);
+      picks.push({ personality: p, move: pick.move, pv: pick.pv, neutral: neutralScore.get(pick.move.enc), alt });
+    }
+    // 表示順は性格定義の順に戻す
+    picks.sort((a, b) => personalities.indexOf(a.personality) - personalities.indexOf(b.personality));
+
+    // 同じ手を推す性格はまとめる
+    const cards = [];
+    const byMove = new Map();
+    for (const pk of picks) {
+      let card = byMove.get(pk.move.enc);
+      if (!card) {
+        const f = moveFeatures(pos, pk.move);
+        const san = pos.san(pk.move, legal);
+        card = {
+          move: pk.move, san, enc: pk.move.enc, features: f, tags: f.tags,
+          personalities: [], score: pk.neutral.score, scoreText: formatScore(pk.neutral.score),
+          pv: pk.pv, pvText: pvToSan(pos, pk.pv), comment: '', rank: neutral.findIndex((r) => r.move.enc === pk.move.enc) + 1,
+          altOf: pk.alt ? pos.san(pk.alt.move, legal) : null,
+        };
+        byMove.set(pk.move.enc, card);
+        cards.push(card);
+      }
+      card.personalities.push(pk.personality);
+    }
+    for (const c of cards) {
+      c.comment = comment(c.personalities[0], c.features, c.san);
+      if (c.altOf) c.note = `${c.altOf} も良いが、別案として。`;
+    }
+    return { cards, neutral, bestScore: best, side: me };
+  }
+
+  function pvToSan(pos, pv) {
+    const p = pos.clone();
+    const out = [];
+    for (const m of pv) {
+      const legal = p.legalMoves();
+      const real = legal.find((x) => x.enc === m.enc);
+      if (!real) break;
+      out.push(p.san(real, legal));
+      p.make(real);
+    }
+    return out.join(' ');
+  }
+
+  return { advise, moveFeatures, primaryFeature, comment, formatScore, pvToSan };
+});
+
+/* ui.js — 盤面・進言カード・対局進行 */
+(function () {
+  'use strict';
+  const { Position, WHITE, BLACK, PAWN, KING, F_CAPTURE, F_PROMO, sqName, fileOf, rankOf } = Chess;
+  const GLYPH = ['', '♟', '♞', '♝', '♜', '♛', '♚'];
+  const PIECE_JA = ['', 'ポーン', 'ナイト', 'ビショップ', 'ルーク', 'クイーン', 'キング'];
+  const LEVELS = [
+    { name: '入門', depth: 2, timeMs: 400, random: 60 },
+    { name: '初級', depth: 3, timeMs: 800, random: 25 },
+    { name: '中級', depth: 4, timeMs: 1500, random: 8 },
+    { name: '上級', depth: 6, timeMs: 3000, random: 0 },
+    { name: '達人', depth: 9, timeMs: 7000, random: 0 },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    board: $('board'), arrows: $('arrows'), status: $('status'), cards: $('cards'),
+    adviceStatus: $('advice-status'), movelist: $('movelist'), evalFill: $('eval-fill'), evalText: $('eval-text'),
+    opponentLine: $('opponent-line'), undo: $('undo'), flip: $('flip'), resign: $('resign'), newGame: $('new-game'),
+    colorSelect: $('color-select'), levelSelect: $('level-select'), oppSelect: $('opp-select'),
+    adviceDepth: $('advice-depth'), promo: $('promo-dialog'), roster: $('roster'),
+  };
+
+  const state = {
+    pos: new Position(), playerColor: WHITE, flipped: false, sans: [],
+    busy: false, over: false, token: 0, selected: null, legal: [], lastMove: null,
+    advice: null, oppPersonality: null, level: LEVELS[2], adviceDepth: 3, hotEnc: null,
+  };
+
+  // ---------- 設定 ----------
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem('gunshi-chess-settings') || '{}');
+      if (s.color) el.colorSelect.value = s.color;
+      if (s.level) el.levelSelect.value = s.level;
+      if (s.opp) el.oppSelect.value = s.opp;
+      if (s.adviceDepth) el.adviceDepth.value = s.adviceDepth;
+    } catch (e) { /* ignore */ }
+  }
+  function saveSettings() {
+    try {
+      localStorage.setItem('gunshi-chess-settings', JSON.stringify({
+        color: el.colorSelect.value, level: el.levelSelect.value, opp: el.oppSelect.value, adviceDepth: el.adviceDepth.value,
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
+  // ---------- 盤描画 ----------
+  function buildBoard() {
+    el.board.innerHTML = '';
+    for (let i = 0; i < 64; i++) {
+      const d = document.createElement('div');
+      d.className = 'square';
+      d.addEventListener('click', () => onSquareClick(+d.dataset.sq));
+      el.board.appendChild(d);
+    }
+  }
+
+  function displayToSq(i) {
+    let r = 7 - Math.floor(i / 8), f = i % 8;
+    if (state.flipped) { r = 7 - r; f = 7 - f; }
+    return (r << 4) | f;
+  }
+
+  function render() {
+    const pos = state.pos;
+    const check = !state.over && pos.inCheck();
+    const kingSq = pos.kingSq[pos.side === WHITE ? 0 : 1];
+    const targets = new Map(state.legal.map((m) => [m.to, m]));
+    const squares = el.board.children;
+    for (let i = 0; i < 64; i++) {
+      const sq = displayToSq(i);
+      const d = squares[i];
+      d.dataset.sq = sq;
+      const light = (fileOf(sq) + rankOf(sq)) % 2 === 1;
+      let cls = 'square ' + (light ? 'light' : 'dark');
+      if (state.lastMove && (sq === state.lastMove.from || sq === state.lastMove.to)) cls += ' last';
+      if (state.selected === sq) cls += ' selected';
+      if (targets.has(sq)) cls += ' target' + (targets.get(sq).flags & F_CAPTURE ? ' capture' : '');
+      if (check && sq === kingSq) cls += ' check';
+      d.className = cls;
+      const p = pos.board[sq];
+      let html = '';
+      if (p) html += `<span class="piece ${p > 0 ? 'w' : 'b'}">${GLYPH[Math.abs(p)]}</span>`;
+      const bottomRow = i >= 56, leftCol = i % 8 === 0;
+      if (bottomRow) html += `<span class="coord file">${'abcdefgh'[fileOf(sq)]}</span>`;
+      if (leftCol) html += `<span class="coord rank">${rankOf(sq) + 1}</span>`;
+      d.innerHTML = html;
+    }
+    renderArrows();
+    renderMoveList();
+    el.undo.disabled = state.busy || state.pos.history.length === 0;
+    el.resign.disabled = state.over || state.busy;
+  }
+
+  function sqCenter(sq) {
+    let x = fileOf(sq), y = 7 - rankOf(sq);
+    if (state.flipped) { x = 7 - x; y = 7 - y; }
+    return [x + 0.5, y + 0.5];
+  }
+
+  function renderArrows() {
+    const svg = el.arrows;
+    svg.innerHTML = '';
+    if (!state.advice || state.over) return;
+    for (const card of state.advice.cards) {
+      const [x1, y1] = sqCenter(card.move.from);
+      const [x2, y2] = sqCenter(card.move.to);
+      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+      const ux = dx / len, uy = dy / len;
+      const head = 0.38, w = 0.14;
+      const bx = x2 - ux * head, by = y2 - uy * head;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'arrow' + (state.hotEnc === card.enc ? ' hot' : ''));
+      const color = card.personalities[0].color;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+      line.setAttribute('x2', bx); line.setAttribute('y2', by);
+      line.setAttribute('stroke', color); line.setAttribute('stroke-width', w); line.setAttribute('stroke-linecap', 'round');
+      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      const px = -uy, py = ux;
+      poly.setAttribute('points', `${x2},${y2} ${bx + px * 0.22},${by + py * 0.22} ${bx - px * 0.22},${by - py * 0.22}`);
+      poly.setAttribute('fill', color);
+      g.appendChild(line); g.appendChild(poly);
+      svg.appendChild(g);
+    }
+  }
+
+  function renderMoveList() {
+    el.movelist.innerHTML = '';
+    for (let i = 0; i < state.sans.length; i += 2) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${state.sans[i]}</span><span>${state.sans[i + 1] || ''}</span>`;
+      el.movelist.appendChild(li);
+    }
+    el.movelist.scrollTop = el.movelist.scrollHeight;
+  }
+
+  function setStatus(text, cls) {
+    el.status.textContent = text;
+    el.status.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  function setEval(scoreForSide, side) {
+    const white = side === WHITE ? scoreForSide : -scoreForSide;
+    let pct;
+    if (Search.isMateScore(white)) pct = white > 0 ? 100 : 0;
+    else pct = 100 / (1 + Math.exp(-white / 350));
+    el.evalFill.style.width = pct + '%';
+    el.evalText.textContent = Search.isMateScore(white)
+      ? (white > 0 ? '白詰み' : '黒詰み')
+      : (white >= 0 ? '+' : '') + (white / 100).toFixed(1);
+  }
+
+  // ---------- 進言カード ----------
+  function renderCards() {
+    el.cards.innerHTML = '';
+    if (!state.advice) return;
+    for (const card of state.advice.cards) {
+      const lead = card.personalities[0];
+      const others = card.personalities.slice(1);
+      const div = document.createElement('div');
+      div.className = 'card' + (state.over || state.busy ? ' disabled' : '');
+      const scoreCls = Search.isMateScore(card.score) ? (card.score > 0 ? 'good' : 'bad') : card.score > 50 ? 'good' : card.score < -50 ? 'bad' : '';
+      div.innerHTML = `
+        <div class="card-head">
+          <span class="mark" style="background:${lead.color}">${lead.mark}</span>
+          <span class="name">${lead.name}</span>
+          <span class="trait" style="color:${lead.color}">${lead.trait}</span>
+          ${others.length ? `<span class="also">${others.map((p) => p.name).join('・')} も賛成</span>` : ''}
+        </div>
+        <div class="card-move"><span class="san">${card.san}</span><span class="score ${scoreCls}">形勢 ${card.scoreText}</span></div>
+        <div class="card-comment">「${card.comment}」</div>
+        ${card.note ? `<div class="card-note">※ ${card.note}</div>` : ''}
+        <div class="chips">${card.tags.map((t) => `<span class="chip${t === '取られる駒あり' ? ' warn' : ''}">${t}</span>`).join('')}</div>
+        <div class="pv">読み筋: ${card.pvText}</div>`;
+      div.addEventListener('mouseenter', () => { state.hotEnc = card.enc; renderArrows(); });
+      div.addEventListener('mouseleave', () => { state.hotEnc = null; renderArrows(); });
+      div.addEventListener('click', () => { if (!state.busy && !state.over) playerMove(card.move); });
+      el.cards.appendChild(div);
+    }
+  }
+
+  function setAdviceStatus(text, spinning) {
+    el.adviceStatus.innerHTML = (spinning ? '<span class="spinner"></span>' : '') + text;
+  }
+
+  async function startAdvice() {
+    const token = ++state.token;
+    state.advice = null;
+    renderCards(); renderArrows();
+    if (state.over || state.pos.side !== state.playerColor) { setAdviceStatus(''); return; }
+    setAdviceStatus('軍師たちが検討中…', true);
+    const t0 = performance.now();
+    const res = await Advisor.advise(state.pos, {
+      depth: state.adviceDepth,
+      shouldAbort: () => token !== state.token,
+      onProgress: (msg) => { if (token === state.token) setAdviceStatus(msg, true); },
+    });
+    if (token !== state.token || !res) return;
+    state.advice = res;
+    setEval(res.bestScore, res.side);
+    setAdviceStatus(`検討完了（${((performance.now() - t0) / 1000).toFixed(1)}秒）。${res.cards.length} 案あります。`);
+    renderCards(); renderArrows();
+  }
+
+  // ---------- 対局進行 ----------
+  function applyMove(m) {
+    const legal = state.pos.legalMoves();
+    const san = state.pos.san(m, legal);
+    state.pos.make(m);
+    state.sans.push(san);
+    state.lastMove = m;
+    state.selected = null; state.legal = [];
+    return san;
+  }
+
+  function checkGameOver() {
+    const st = state.pos.status();
+    if (!st.over) return false;
+    state.over = true;
+    state.token++;
+    state.advice = null;
+    let msg;
+    const playerWon = (st.result === '1-0' && state.playerColor === WHITE) || (st.result === '0-1' && state.playerColor === BLACK);
+    if (st.reason === 'checkmate') msg = playerWon ? 'チェックメイト！ あなたの勝ちです。' : 'チェックメイト……あなたの負けです。';
+    else if (st.reason === 'stalemate') msg = 'ステイルメイト。引き分けです。';
+    else if (st.reason === 'repetition') msg = '同一局面 3 回。引き分けです。';
+    else if (st.reason === 'fifty') msg = '50 手ルール。引き分けです。';
+    else msg = '駒不足で詰ませられません。引き分けです。';
+    setStatus(msg + ' [' + st.result + ']', 'over');
+    setAdviceStatus('対局終了。「新しい対局」でもう一局どうぞ。');
+    renderCards();
+    return true;
+  }
+
+  function playerStatus() {
+    const check = state.pos.inCheck();
+    setStatus((check ? 'チェック！ ' : '') + `あなたの番です（${state.playerColor === WHITE ? '白' : '黒'}）`);
+  }
+
+  async function playerMove(m) {
+    if (state.busy || state.over) return;
+    state.token++;
+    applyMove(m);
+    state.advice = null;
+    renderCards(); render();
+    if (checkGameOver()) return;
+    await opponentMove();
+  }
+
+  async function opponentMove() {
+    state.busy = true;
+    render(); renderCards();
+    const p = state.oppPersonality;
+    setStatus(`${p.name}（相手）が考え中…`, 'thinking');
+    setAdviceStatus('');
+    const oppColor = -state.playerColor;
+    const weights = Object.assign({}, p.weights, { random: (p.weights.random || 0) + state.level.random });
+    const evalFn = Eval.makeEvaluator(weights, oppColor);
+    const before = state.pos.clone();
+    const res = await Search.think(state.pos, evalFn, { maxDepth: state.level.depth, timeMs: state.level.timeMs });
+    state.busy = false;
+    if (!res || state.over) return;
+    const legal = before.legalMoves();
+    const f = Advisor.moveFeatures(before, res.move);
+    const san = before.san(res.move, legal);
+    const line = Advisor.comment(p, f, san);
+    applyMove(res.move);
+    el.opponentLine.innerHTML = `<span class="mark small" style="background:${p.color}">${p.mark}</span><strong>${p.name}</strong>（相手）「${line}」<span class="depth">深さ ${res.depth}</span>`;
+    render();
+    if (checkGameOver()) return;
+    playerStatus();
+    startAdvice();
+  }
+
+  function onSquareClick(sq) {
+    if (state.busy || state.over || state.pos.side !== state.playerColor) return;
+    const p = state.pos.board[sq];
+    const own = p && (p > 0 ? WHITE : BLACK) === state.playerColor;
+    if (state.selected !== null) {
+      const cands = state.legal.filter((m) => m.to === sq);
+      if (cands.length) {
+        if (cands[0].flags & F_PROMO) {
+          choosePromotion(state.playerColor).then((pt) => {
+            const m = cands.find((c) => c.promo === pt);
+            if (m) playerMove(m);
+          });
+          return;
+        }
+        playerMove(cands[0]);
+        return;
+      }
+    }
+    if (own && state.selected !== sq) {
+      state.selected = sq;
+      state.legal = state.pos.legalMoves().filter((m) => m.from === sq);
+    } else {
+      state.selected = null; state.legal = [];
+    }
+    render();
+  }
+
+  function choosePromotion(color) {
+    return new Promise((resolve) => {
+      const box = el.promo.querySelector('.promo-choices');
+      box.innerHTML = '';
+      for (const pt of [5, 2, 4, 3]) {
+        const b = document.createElement('button');
+        b.innerHTML = `<span class="piece ${color === WHITE ? 'w' : 'b'}">${GLYPH[pt]}</span>`;
+        b.title = PIECE_JA[pt];
+        b.addEventListener('click', () => { el.promo.hidden = true; resolve(pt); });
+        box.appendChild(b);
+      }
+      el.promo.hidden = false;
+    });
+  }
+
+  function undo() {
+    if (state.busy || state.pos.history.length === 0) return;
+    state.token++;
+    const wasOver = state.over;
+    state.over = false;
+    state.pos.unmake(); state.sans.pop();
+    if (state.pos.side !== state.playerColor && state.pos.history.length) { state.pos.unmake(); state.sans.pop(); }
+    state.lastMove = state.pos.history.length ? state.pos.history[state.pos.history.length - 1].m : null;
+    state.selected = null; state.legal = [];
+    el.opponentLine.textContent = wasOver ? '' : el.opponentLine.textContent;
+    render();
+    if (state.pos.side === state.playerColor) { playerStatus(); startAdvice(); }
+    else opponentMove();
+  }
+
+  function resign() {
+    if (state.over || state.busy) return;
+    state.over = true; state.token++; state.advice = null;
+    setStatus('投了しました。相手の勝ちです。', 'over');
+    setAdviceStatus('対局終了。「新しい対局」でもう一局どうぞ。');
+    renderCards(); render();
+  }
+
+  function newGame() {
+    saveSettings();
+    state.token++;
+    state.pos = new Position();
+    state.sans = []; state.lastMove = null; state.selected = null; state.legal = [];
+    state.over = false; state.busy = false; state.advice = null;
+    const c = el.colorSelect.value;
+    state.playerColor = c === 'w' ? WHITE : c === 'b' ? BLACK : (Math.random() < 0.5 ? WHITE : BLACK);
+    state.flipped = state.playerColor === BLACK;
+    state.level = LEVELS[+el.levelSelect.value] || LEVELS[2];
+    state.adviceDepth = +el.adviceDepth.value || 3;
+    const oppId = el.oppSelect.value;
+    state.oppPersonality = oppId === 'random'
+      ? Eval.PERSONALITIES[Math.floor(Math.random() * Eval.PERSONALITIES.length)]
+      : Eval.personalityById(oppId);
+    el.opponentLine.innerHTML = `<span class="mark small" style="background:${state.oppPersonality.color}">${state.oppPersonality.mark}</span>相手は <strong>${state.oppPersonality.name}</strong>（${state.oppPersonality.trait}・${state.level.name}）`;
+    setEval(0, WHITE);
+    render(); renderCards();
+    if (state.pos.side === state.playerColor) { playerStatus(); startAdvice(); }
+    else opponentMove();
+  }
+
+  // ---------- 初期化 ----------
+  function init() {
+    for (const p of Eval.PERSONALITIES) {
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = `${p.name}（${p.trait}）`;
+      el.oppSelect.appendChild(o);
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="mark small" style="background:${p.color}">${p.mark}</span><strong>${p.name}</strong>（${p.trait}）<span class="desc">${p.desc}</span>`;
+      el.roster.appendChild(li);
+    }
+    loadSettings();
+    buildBoard();
+    el.newGame.addEventListener('click', newGame);
+    el.undo.addEventListener('click', undo);
+    el.resign.addEventListener('click', resign);
+    el.flip.addEventListener('click', () => { state.flipped = !state.flipped; render(); });
+    el.adviceDepth.addEventListener('change', () => { state.adviceDepth = +el.adviceDepth.value; saveSettings(); if (!state.busy && !state.over) startAdvice(); });
+    el.levelSelect.addEventListener('change', () => { state.level = LEVELS[+el.levelSelect.value]; saveSettings(); });
+    el.oppSelect.addEventListener('change', saveSettings);
+    el.colorSelect.addEventListener('change', saveSettings);
+    newGame();
+  }
+
+  // テスト用に公開
+  window.GunshiChess = { state, playerMove, newGame, undo, LEVELS };
+  init();
+})();
+
+</script>

@@ -4,12 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>軍師チェス</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Crimson+Pro:wght@600;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <header class="topbar">
-  <h1>♞ 軍師チェス</h1>
-  <p class="tagline">自分で指してもよし、軍師たちの進言から選ぶだけでもよし。</p>
+  <h1>軍師チェス</h1>
+  <p class="tagline">自分で指してもよし、六人の軍師の進言から選ぶだけでもよし。</p>
   <div class="controls">
     <label>あなたの色
       <select id="color-select">
@@ -50,7 +52,7 @@
     </div>
     <div class="eval-row">
       <div class="eval-bar" title="形勢（白から見た評価）"><div id="eval-fill" class="eval-fill"></div></div>
-      <span id="eval-text" class="eval-text">±0.0</span>
+      <span id="eval-text" class="eval-text">+0.0</span>
     </div>
     <div id="status" class="status"></div>
     <div class="board-buttons">

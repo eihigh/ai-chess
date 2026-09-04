@@ -161,14 +161,13 @@
       const others = card.personalities.slice(1);
       const div = document.createElement('div');
       div.className = 'card' + (state.over || state.busy ? ' disabled' : '');
-      div.style.setProperty('--card-color', lead.color);
       const scoreCls = Search.isMateScore(card.score) ? (card.score > 0 ? 'good' : 'bad') : card.score > 50 ? 'good' : card.score < -50 ? 'bad' : '';
       div.innerHTML = `
         <div class="card-head">
-          <span class="avatar">${lead.icon}</span>
+          <span class="mark" style="background:${lead.color}">${lead.mark}</span>
           <span class="name">${lead.name}</span>
-          <span class="trait">${lead.trait}</span>
-          ${others.length ? `<span class="also">${others.map((p) => p.icon + p.name).join('・')} も賛成</span>` : ''}
+          <span class="trait" style="color:${lead.color}">${lead.trait}</span>
+          ${others.length ? `<span class="also">${others.map((p) => p.name).join('・')} も賛成</span>` : ''}
         </div>
         <div class="card-move"><span class="san">${card.san}</span><span class="score ${scoreCls}">形勢 ${card.scoreText}</span></div>
         <div class="card-comment">「${card.comment}」</div>
@@ -254,7 +253,7 @@
     state.busy = true;
     render(); renderCards();
     const p = state.oppPersonality;
-    setStatus(`${p.icon} ${p.name}（相手）が考え中…`, 'thinking');
+    setStatus(`${p.name}（相手）が考え中…`, 'thinking');
     setAdviceStatus('');
     const oppColor = -state.playerColor;
     const weights = Object.assign({}, p.weights, { random: (p.weights.random || 0) + state.level.random });
@@ -268,7 +267,7 @@
     const san = before.san(res.move, legal);
     const line = Advisor.comment(p, f, san);
     applyMove(res.move);
-    el.opponentLine.innerHTML = `${p.icon} <strong>${p.name}</strong>（相手）: 「${line}」 <span style="color:#aaa">深さ${res.depth}</span>`;
+    el.opponentLine.innerHTML = `<span class="mark small" style="background:${p.color}">${p.mark}</span><strong>${p.name}</strong>（相手）「${line}」<span class="depth">深さ ${res.depth}</span>`;
     render();
     if (checkGameOver()) return;
     playerStatus();
@@ -355,7 +354,7 @@
     state.oppPersonality = oppId === 'random'
       ? Eval.PERSONALITIES[Math.floor(Math.random() * Eval.PERSONALITIES.length)]
       : Eval.personalityById(oppId);
-    el.opponentLine.innerHTML = `相手: ${state.oppPersonality.icon} <strong>${state.oppPersonality.name}</strong>（${state.oppPersonality.trait}・${state.level.name}）`;
+    el.opponentLine.innerHTML = `<span class="mark small" style="background:${state.oppPersonality.color}">${state.oppPersonality.mark}</span>相手は <strong>${state.oppPersonality.name}</strong>（${state.oppPersonality.trait}・${state.level.name}）`;
     setEval(0, WHITE);
     render(); renderCards();
     if (state.pos.side === state.playerColor) { playerStatus(); startAdvice(); }
@@ -366,10 +365,10 @@
   function init() {
     for (const p of Eval.PERSONALITIES) {
       const o = document.createElement('option');
-      o.value = p.id; o.textContent = `${p.icon} ${p.name}（${p.trait}）`;
+      o.value = p.id; o.textContent = `${p.name}（${p.trait}）`;
       el.oppSelect.appendChild(o);
       const li = document.createElement('li');
-      li.innerHTML = `${p.icon} <strong>${p.name}</strong>（${p.trait}）<span class="desc">${p.desc}</span>`;
+      li.innerHTML = `<span class="mark small" style="background:${p.color}">${p.mark}</span><strong>${p.name}</strong>（${p.trait}）<span class="desc">${p.desc}</span>`;
       el.roster.appendChild(li);
     }
     loadSettings();
