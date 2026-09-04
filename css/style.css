@@ -234,6 +234,26 @@ main {
 .card-move .score.bad { color: var(--bad); }
 .card-comment { margin: 6px 0 4px; font-family: var(--serif); font-size: 0.98rem; }
 .card-note { font-size: 0.78rem; color: var(--muted); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; cursor: pointer; }
+.card-explain {
+  margin: 8px 0 2px;
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--accent);
+  font-size: 0.86rem;
+  line-height: 1.7;
+  max-width: 62ch;
+}
+.card-explain .label {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+}
+.card-explain .caution { display: block; margin-top: 4px; color: var(--warn-ink); }
+.card-explain .caution::before { content: "注意: "; font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .chip { font-size: 0.72rem; background: var(--chip-bg); color: var(--chip-ink); border-radius: 2px; padding: 1px 7px; letter-spacing: 0.04em; }
 .chip.warn { background: var(--warn-bg); color: var(--warn-ink); }

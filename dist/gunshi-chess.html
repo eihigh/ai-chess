@@ -237,6 +237,26 @@ main {
 .card-move .score.bad { color: var(--bad); }
 .card-comment { margin: 6px 0 4px; font-family: var(--serif); font-size: 0.98rem; }
 .card-note { font-size: 0.78rem; color: var(--muted); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; cursor: pointer; }
+.card-explain {
+  margin: 8px 0 2px;
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--accent);
+  font-size: 0.86rem;
+  line-height: 1.7;
+  max-width: 62ch;
+}
+.card-explain .label {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+}
+.card-explain .caution { display: block; margin-top: 4px; color: var(--warn-ink); }
+.card-explain .caution::before { content: "注意: "; font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .chip { font-size: 0.72rem; background: var(--chip-bg); color: var(--chip-ink); border-radius: 2px; padding: 1px 7px; letter-spacing: 0.04em; }
 .chip.warn { background: var(--warn-bg); color: var(--warn-ink); }
@@ -317,6 +337,7 @@ main {
   <section class="advice-panel">
     <h2>軍師の進言</h2>
     <p class="hint">カードをクリックするとその手を指します。盤面を直接クリックして指すこともできます。</p>
+    <label class="toggle"><input type="checkbox" id="show-explain" checked> 理論解説を表示</label>
     <div id="advice-status" class="advice-status"></div>
     <div id="cards" class="cards"></div>
   </section>
@@ -1772,6 +1793,238 @@ main {
     return fillTemplate(t, f, san);
   }
 
+  // ---------- 理論解説 ----------
+  const FILES = 'abcdefgh';
+  const CENTER_SQ = [51, 52, 67, 68];
+  const at = (sq, piece) => `${sqName(sq)}の${PIECE_JA[Math.abs(piece)]}`;
+  const sqIndexList = () => { const a = []; for (let s = 0; s < 128; s++) if (!(s & 0x88)) a.push(s); return a; };
+  const ALL_SQ = sqIndexList();
+
+  /** 移動後の駒によるピン: [{pinned, behind, absolute}] */
+  function findPins(pos, sq) {
+    const b = pos.board, p = b[sq], pt = Math.abs(p), color = p > 0 ? 1 : -1;
+    if (pt !== BISHOP && pt !== ROOK && pt !== QUEEN) return [];
+    const offs = pt === BISHOP ? BISHOP_OFFS : pt === ROOK ? ROOK_OFFS : KING_OFFS;
+    const out = [];
+    for (const d of offs) {
+      let first = -1;
+      for (let t = sq + d; onBoard(t); t += d) {
+        const tp = b[t];
+        if (!tp) continue;
+        if ((tp > 0 ? 1 : -1) === color) break;
+        if (first < 0) { first = t; if (Math.abs(tp) === KING) break; continue; }
+        const fv = VALUES[Math.abs(b[first])], bv = VALUES[Math.abs(tp)];
+        if (Math.abs(tp) === KING) out.push({ pinned: first, behind: t, absolute: true });
+        else if (bv > fv) out.push({ pinned: first, behind: t, absolute: false });
+        break;
+      }
+    }
+    return out;
+  }
+
+  /** 移動によって開いた味方スライダーの攻撃 (ディスカバード) */
+  function findDiscovered(pos, m) {
+    const b = pos.board, us = -pos.side; // 指した後の局面で呼ぶ
+    const out = [];
+    for (const s of ALL_SQ) {
+      const p = b[s];
+      if (!p || (p > 0 ? 1 : -1) !== us || s === m.to) continue;
+      const pt = Math.abs(p);
+      if (pt !== BISHOP && pt !== ROOK && pt !== QUEEN) continue;
+      const offs = pt === BISHOP ? BISHOP_OFFS : pt === ROOK ? ROOK_OFFS : KING_OFFS;
+      for (const d of offs) {
+        let passedFrom = false;
+        for (let t = s + d; onBoard(t); t += d) {
+          if (t === m.from) { passedFrom = true; continue; }
+          const tp = b[t];
+          if (!tp) continue;
+          if (passedFrom && (tp > 0 ? 1 : -1) !== us && (VALUES[Math.abs(tp)] >= 300 || Math.abs(tp) === KING)) out.push({ from: s, target: t, check: Math.abs(tp) === KING });
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  function isOutpost(pos, sq, color) {
+    const b = pos.board;
+    const rel = color === WHITE ? rankOf(sq) : 7 - rankOf(sq);
+    if (rel < 4) return false;
+    const back = -16 * color, ownPawn = PAWN * color, enemyPawn = -PAWN * color;
+    const guarded = (onBoard(sq + back - 1) && b[sq + back - 1] === ownPawn) || (onBoard(sq + back + 1) && b[sq + back + 1] === ownPawn);
+    if (!guarded) return false;
+    const f = fileOf(sq);
+    for (const s of ALL_SQ) {
+      if (b[s] !== enemyPawn || Math.abs(fileOf(s) - f) !== 1) continue;
+      if (color === WHITE ? rankOf(s) > rankOf(sq) : rankOf(s) < rankOf(sq)) return false;
+    }
+    return true;
+  }
+
+  function scorePhrase(score) {
+    if (Search.isMateScore(score)) return score > 0 ? '詰みまで読み切っています' : '相手に詰み筋があります';
+    const a = Math.abs(score);
+    if (a <= 30) return '互角';
+    const w = a <= 100 ? 'やや' : a <= 300 ? '' : '大きく';
+    return score > 0 ? `${w}有利` : `${w}不利`;
+  }
+
+  /**
+   * チェス理論に基づく解説文を作る。pos は指す前の局面。
+   * ctx: { pv, score, best, rank, bestSan, pvText }
+   */
+  function explain(pos, m, f, ctx) {
+    const us = pos.side, them = -us;
+    const b = pos.board;
+    const pt = Math.abs(m.piece);
+    const feat = Eval.features(pos);
+    const mi = us === WHITE ? 0 : 1;
+    const matDiff = feat.mat[mi] - feat.mat[1 - mi];
+    const phase = feat.phase;
+    const opening = phase > 0.8 && pos.fullmove <= 12;
+    const endgame = phase < 0.35;
+    const capVal = m.captured ? VALUES[Math.abs(m.captured)] : 0;
+    const relTo = us === WHITE ? rankOf(m.to) : 7 - rankOf(m.to);
+    const S = [], C = [];
+    const targetName = (t) => at(t.sq, t.piece);
+    const threatNames = f.threats.slice(0, 2).map(targetName).join('と');
+
+    // --- 指した後の局面で分かること ---
+    pos.make(m);
+    const pins = findPins(pos, m.to).filter((x) => Math.abs(b[x.pinned]) !== PAWN || x.absolute);
+    const disc = findDiscovered(pos, m);
+    const outpost = (pt === KNIGHT || pt === BISHOP) && isOutpost(pos, m.to, us);
+    const hangAfter = hangingPieces(pos, us).filter((s) => s !== m.to);
+    const oppCastled = (() => { const k = pos.kingSq[them === WHITE ? 0 : 1]; const home = them === WHITE ? 0 : 7; return rankOf(k) === home && (fileOf(k) <= 2 || fileOf(k) >= 6); })();
+    const knightEyes = pt === KNIGHT ? attacksFrom(pos, m.to).filter((s) => CENTER_SQ.includes(s) || (fileOf(s) >= 2 && fileOf(s) <= 5 && (us === WHITE ? rankOf(s) >= 3 : rankOf(s) <= 4))).slice(0, 3).map(sqName) : [];
+    const pawnKicks = pt === PAWN ? attacksFrom(pos, m.to).filter((s) => b[s] && (b[s] > 0 ? 1 : -1) === them && Math.abs(b[s]) !== PAWN && Math.abs(b[s]) !== KING) : [];
+    let passed = false;
+    if (pt === PAWN) {
+      passed = true;
+      for (const s of ALL_SQ) {
+        if (b[s] !== -PAWN * us || Math.abs(fileOf(s) - fileOf(m.to)) > 1) continue;
+        if (us === WHITE ? rankOf(s) > rankOf(m.to) : rankOf(s) < rankOf(m.to)) { passed = false; break; }
+      }
+    }
+    pos.unmake();
+
+    // 直前に同じ駒を動かしたか
+    const hist = pos.history;
+    const samePieceAgain = hist.length >= 2 && hist[hist.length - 2].m.to === m.from;
+    const kingFile = fileOf(pos.kingSq[mi]);
+    const shieldPawn = pt === PAWN && Math.abs(fileOf(m.from) - kingFile) <= 1 && (kingFile <= 2 || kingFile >= 5) &&
+      rankOf(m.from) === (us === WHITE ? 1 : 6) && !f.capture;
+    const inCheckNow = pos.inCheck();
+    const promoName = m.promo ? PIECE_JA[m.promo] : '';
+
+    // --- 主題 ---
+    if (f.mate) {
+      S.push(`${ctx.san} はチェックメイトです。相手の王には逃げ場も合駒もありません。`);
+    } else if (inCheckNow) {
+      if (f.capture) S.push(`チェックをかけている${f.capturedName}を取り除いて王手を解消します。取れるなら取るのが最も手損のない対処です。`);
+      else if (pt === KING) {
+        S.push(`王を動かして王手を避けます。`);
+        if (opening && !f.castle && rankOf(m.from) === (us === WHITE ? 0 : 7)) C.push(`王が動くとキャスリング権を失うので、後で王の安全を確保する手段が減ります。`);
+      } else {
+        S.push(`合駒でチェックを防ぎます。合駒は後でピンされやすいので、その駒が安全かどうかが要点です。`);
+        if (f.threats.length) S.push(`しかも合駒が${targetName(f.threats[0])}に当たるので、相手に手を渡さずテンポを稼げます。`);
+      }
+    } else if (f.check && f.fork && f.threats.length) {
+      S.push(`王手をかけつつ${threatNames}にも当てる両取りです。相手は王手を先に対処しなければならないので、次に${targetName(f.threats[0])}が取れます。`);
+    } else if (f.fork && f.threats.length >= 2) {
+      S.push(`${f.pieceName}が${threatNames}を同時に攻撃する両取りです。相手が片方を守ればもう片方を取れます。`);
+    } else if (f.sacrifice) {
+      const why = f.check ? '王を引きずり出し' : f.threats.length ? `${targetName(f.threats[0])}への攻撃を作り` : '敵陣を破って';
+      S.push(`駒を捨てる手です。${f.pieceName}を犠牲にして${why}、相手の守りを崩します。`);
+      S.push(ctx.score >= 0 ? `参謀の計算では犠牲に見合う見返りがあり、形勢は${ctx.scoreText}です。` : `見返りは限定的で、形勢は${ctx.scoreText}。実戦的な勝負手と考えてください。`);
+    } else if (f.winsMaterial) {
+      const free = !pos.isAttacked(m.to, them);
+      if (free) S.push(`${f.capturedName}をただで取れます。取り返しはありません。`);
+      else S.push(`${f.capturedName}を取ります。取り返されても${f.pieceName}と${f.capturedName}の交換で約${((capVal - VALUES[pt]) / 100).toFixed(0)}ポーン分の駒得です。`);
+      if (matDiff + capVal >= 300) S.push(`駒得したあとは交換で局面を単純化し、終盤で数の優位を活かすのが定石です。`);
+    } else if (f.check) {
+      S.push(`チェックです。相手は王を守る手に限られるので、主導権（イニシアチブ）を保てます。`);
+      if (f.develop) S.push(`展開しながらの王手なのでテンポも稼げます。`);
+    } else if (f.promo) {
+      S.push(`ポーンが${promoName}に昇格します。昇格はパスポーンを押し進めた最終目標で、局面の駒価値が一気に変わります。`);
+    } else if (f.castle) {
+      S.push(`キャスリングで王を隅の安全圏に移し、ルークを中央の筋に近づけます。序盤の三原則（展開・中央・王の安全）のうち、王の安全を確保する手です。`);
+      if (!oppCastled) S.push(`相手はまだキャスリングしていないので、先に王を安全にしておく価値は大きいです。`);
+    } else if (f.trade) {
+      S.push(`${f.pieceName}と${f.capturedName}の等価交換です。`);
+      if (matDiff >= 200) S.push(`駒得している側は交換で局面を単純化するのが定石で、優位を確実にします。`);
+      else if (matDiff <= -200) C.push(`駒損している側の交換は相手の優位を固めやすいので、通常は避けたい選択です。`);
+      else S.push(`攻めに使える相手の駒を減らし、局面を整理する意味があります。`);
+    } else if (f.escapes) {
+      S.push(`攻撃されている${f.pieceName}を安全な${f.to}へ逃がします。`);
+      if (f.threats.length) S.push(`逃げながら${targetName(f.threats[0])}に当てるので、手損になりません。`);
+    } else if (f.defends) {
+      S.push(`浮いていた駒を守ります。守られていない駒は戦術の標的になるため、まず駒同士の連携を回復します。`);
+    } else if (f.bigThreat && f.threats.length) {
+      S.push(`${targetName(f.threats[0])}を狙います。相手は対応を迫られるので、テンポを稼ぎながら駒を良い位置に置けます。`);
+    } else if (f.develop) {
+      if (pt === KNIGHT) S.push(`ナイトを${f.to}に展開します。ナイトは縁より中央寄りが強く、${f.to}からは${knightEyes.length ? knightEyes.join('・') + 'など' : ''}中央のマスを睨みます。`);
+      else if (['g2', 'b2', 'g7', 'b7'].includes(f.to)) S.push(`フィアンケットです。ビショップを長い対角線に据え、中央を遠くから支配します。`);
+      else S.push(`ビショップを${f.to}に展開し、対角線を通します。`);
+      if (opening) S.push(`序盤は中央ポーンを突いたらマイナーピースを早く展開し、キャスリングにつなげるのが原則です。`);
+    } else if (f.centerPawn) {
+      S.push(`${f.to}に中央ポーンを進めます。中央のポーンは空間を稼ぎ、ビショップやクイーンの通り道を開き、相手の駒の活動範囲を狭めます。`);
+    } else if (f.rookOpenFile) {
+      S.push(`開いた${FILES[fileOf(m.to)]}筋にルークを置きます。ルークは開いた筋で最大の力を発揮し、相手陣への侵入路になります。`);
+    } else if (pt === ROOK && relTo === 6) {
+      S.push(`7段目にルークを侵入させます。7段目のルークは相手のポーンを横から攻撃し、王を後ろの段に閉じ込める強力な配置です。`);
+    } else if (f.pawnStorm) {
+      if (pawnKicks.length) S.push(`ポーンを突いて${at(pawnKicks[0], b[pawnKicks[0]])}を追い払います。ポーンで駒を追うのは最も安上がりなテンポ稼ぎです。`);
+      else if (passed) S.push(`パスポーン（前方と両隣の筋に相手のポーンがいないポーン）を押し進めます。パスポーンは進むほど価値が上がり、相手の駒を守りに縛りつけます。`);
+      else S.push(`ポーンを進めて空間を稼ぎます。空間の優位は駒の機動力の差につながります。`);
+    } else if (f.nearEnemyKing) {
+      S.push(`敵王の近くに駒を送り込み、攻撃に参加する駒を増やします。王への攻撃は守りの駒より多い数で行うのが原則です。`);
+    } else if (pt === KING) {
+      if (endgame) S.push(`終盤では王も戦力です。王を中央へ向かわせ、自分のポーンの支援と相手ポーンの阻止に働かせます。`);
+      else { S.push(`王を動かします。`); C.push(`中盤の王の移動は守りの陣形を崩しがちなので、必要最小限にとどめます。`); }
+    } else if (pt === QUEEN && opening && !f.capture) {
+      S.push(`クイーンを動かします。`);
+      C.push(`序盤の早いクイーンの繰り出しは、相手の展開の手で追われてテンポを失いやすく、原則には反します。`);
+    } else if (f.retreat) {
+      S.push(`一度引いて${f.pieceName}を再配置します。働きの悪い駒を良いマスに置き直すのは中盤の重要な技術です。`);
+    } else if (pt === PAWN) {
+      S.push(`ポーンを${f.to}に進めます。ポーンは戻れないので、マスの弱体化と空間の獲得を天秤にかける手です。`);
+    } else {
+      S.push(`${f.pieceName}を${f.to}へ。駒の働きを高める静かな手です。`);
+    }
+
+    // --- 戦術的な補足 ---
+    if (pins.length) {
+      const x = pins[0];
+      S.push(x.absolute
+        ? `同時に${at(x.pinned, b[x.pinned])}を王にピン（釘付け）します。ピンされた駒は動けないため事実上働きが止まります。`
+        : `同時に${at(x.pinned, b[x.pinned])}を${at(x.behind, b[x.behind])}にピンします。動けば後ろの駒を失うので、相手はその駒を使えません。`);
+    }
+    if (disc.length) {
+      const x = disc[0];
+      S.push(x.check
+        ? `${f.from}から退くことで${at(x.from, b[x.from])}の利きが通り、ディスカバードチェックになります。`
+        : `${f.from}から退くことで${at(x.from, b[x.from])}が${at(x.target, b[x.target])}に当たる、ディスカバードアタックでもあります。`);
+    }
+    if (outpost) S.push(`${f.to}はアウトポスト（相手のポーンで追い払えず、味方ポーンに守られた前進拠点）で、${f.pieceName}は長く居座れます。`);
+    if (!f.develop && !f.mate && opening && pt !== PAWN && pt !== KING && samePieceAgain && !f.capture && !f.check) {
+      C.push(`序盤で同じ駒を続けて動かしており、展開が遅れる点は理論上のマイナスです。`);
+    }
+    if (shieldPawn && !endgame) C.push(`王の前のポーンを動かすので、王の守りがやや薄くなります。`);
+    if (f.leavesHanging) C.push(`指した後の${f.pieceName}は守られていないので、次の相手の手を確認しておく必要があります。`);
+    else if (hangAfter.length) C.push(`なお${at(hangAfter[0], b[hangAfter[0]])}が浮いたままなので注意が必要です。`);
+
+    // --- 評価と読み筋 ---
+    const diff = ctx.best - ctx.score;
+    let ev = `参謀の総合評価は${ctx.scoreText}（${scorePhrase(ctx.score)}）`;
+    ev += ctx.rank === 1 ? 'で、候補の中で最善です。' : diff < 10 ? `で、最善の ${ctx.bestSan} とほぼ同評価です。` : `。最善の ${ctx.bestSan} との差は約${(diff / 100).toFixed(1)}ポーンです。`;
+    S.push(ev);
+    if (f.mate) C.length = 0;
+    if (ctx.pvText && ctx.pvText.indexOf(' ') > 0) S.push(`予想手順は ${ctx.pvText}。`);
+
+    return { main: S.join(''), cautions: C.join('') };
+  }
+
   function formatScore(score) {
     if (Search.isMateScore(score)) {
       const n = Search.mateIn(score);
@@ -1861,9 +2114,13 @@ main {
       }
       card.personalities.push(pk.personality);
     }
+    const bestSan = pos.san(neutral[0].move, legal);
     for (const c of cards) {
       c.comment = comment(c.personalities[0], c.features, c.san);
       if (c.altOf) c.note = `${c.altOf} も良いが、別案として。`;
+      const ex = explain(pos, c.move, c.features, { san: c.san, pv: c.pv, pvText: c.pvText, score: c.score, scoreText: c.scoreText, best, bestSan, rank: c.rank });
+      c.explain = ex.main;
+      c.cautions = ex.cautions;
     }
     return { cards, neutral, bestScore: best, side: me };
   }
@@ -1881,7 +2138,7 @@ main {
     return out.join(' ');
   }
 
-  return { advise, moveFeatures, primaryFeature, comment, formatScore, pvToSan };
+  return { advise, moveFeatures, primaryFeature, comment, explain, formatScore, pvToSan };
 });
 
 /* ui.js — 盤面・進言カード・対局進行 */
@@ -1904,7 +2161,7 @@ main {
     adviceStatus: $('advice-status'), movelist: $('movelist'), evalFill: $('eval-fill'), evalText: $('eval-text'),
     opponentLine: $('opponent-line'), undo: $('undo'), flip: $('flip'), resign: $('resign'), newGame: $('new-game'),
     colorSelect: $('color-select'), levelSelect: $('level-select'), oppSelect: $('opp-select'),
-    adviceDepth: $('advice-depth'), promo: $('promo-dialog'), roster: $('roster'),
+    adviceDepth: $('advice-depth'), promo: $('promo-dialog'), roster: $('roster'), showExplain: $('show-explain'),
   };
 
   const state = {
@@ -1921,12 +2178,14 @@ main {
       if (s.level) el.levelSelect.value = s.level;
       if (s.opp) el.oppSelect.value = s.opp;
       if (s.adviceDepth) el.adviceDepth.value = s.adviceDepth;
+      if (typeof s.explain === 'boolean') el.showExplain.checked = s.explain;
     } catch (e) { /* ignore */ }
   }
   function saveSettings() {
     try {
       localStorage.setItem('gunshi-chess-settings', JSON.stringify({
         color: el.colorSelect.value, level: el.levelSelect.value, opp: el.oppSelect.value, adviceDepth: el.adviceDepth.value,
+        explain: el.showExplain.checked,
       }));
     } catch (e) { /* ignore */ }
   }
@@ -2058,6 +2317,7 @@ main {
         <div class="card-move"><span class="san">${card.san}</span><span class="score ${scoreCls}">形勢 ${card.scoreText}</span></div>
         <div class="card-comment">「${card.comment}」</div>
         ${card.note ? `<div class="card-note">※ ${card.note}</div>` : ''}
+        ${el.showExplain.checked ? `<div class="card-explain"><span class="label">解説</span>${card.explain}${card.cautions ? `<span class="caution">${card.cautions}</span>` : ''}</div>` : ''}
         <div class="chips">${card.tags.map((t) => `<span class="chip${t === '取られる駒あり' ? ' warn' : ''}">${t}</span>`).join('')}</div>
         <div class="pv">読み筋: ${card.pvText}</div>`;
       div.addEventListener('mouseenter', () => { state.hotEnc = card.enc; renderArrows(); });
@@ -2266,6 +2526,7 @@ main {
     el.adviceDepth.addEventListener('change', () => { state.adviceDepth = +el.adviceDepth.value; saveSettings(); if (!state.busy && !state.over) startAdvice(); });
     el.levelSelect.addEventListener('change', () => { state.level = LEVELS[+el.levelSelect.value]; saveSettings(); });
     el.oppSelect.addEventListener('change', saveSettings);
+    el.showExplain.addEventListener('change', () => { saveSettings(); renderCards(); });
     el.colorSelect.addEventListener('change', saveSettings);
     newGame();
   }

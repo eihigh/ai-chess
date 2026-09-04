@@ -13,6 +13,9 @@ async function main() {
     ['中盤', 'r1bq1rk1/pp2bppp/2n1pn2/2pp4/3P4/2PBPN2/PP1N1PPP/R1BQK2R w KQ - 0 8'],
     ['詰みあり', 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4'],
     ['駒得あり', 'rnbqkbnr/ppp2ppp/8/3pp3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq d6 0 3'],
+    ['ピンと両取り', 'r1bqkb1r/pppp1ppp/2n2n2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 4'],
+    ['終盤', '8/5k2/8/3P4/8/8/5K2/8 w - - 0 1'],
+    ['王手中', 'rnb1kbnr/pppp1ppp/8/4p3/4P2q/5P2/PPPP2PP/RNBQKBNR w KQkq - 1 3'],
   ];
   for (const [name, fen] of fens) {
     const pos = new Chess.Position(fen);
@@ -22,6 +25,8 @@ async function main() {
     for (const c of res.cards) {
       console.log(`  [${c.personalities.map((p) => p.name).join('・')}] ${c.san} (${c.scoreText}, 総合${c.rank}位) tags=${c.tags.join(',')}`);
       console.log(`     「${c.comment}」 読み筋: ${c.pvText}`);
+      console.log(`     解説: ${c.explain}${c.cautions ? ' ⚠' + c.cautions : ''}`);
+      check(typeof c.explain === 'string' && c.explain.length > 20, `${name}: explanation for ${c.san}`);
     }
     check(res.cards.length >= 1 && res.cards.every((c) => pos.legalMoves().some((m) => m.enc === c.enc)), `${name}: cards are legal`);
     check(res.cards.every((c) => c.score >= res.bestScore - 150 || Search.isMateScore(res.bestScore)), `${name}: no blunder cards`);

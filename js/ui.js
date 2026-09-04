@@ -18,7 +18,7 @@
     adviceStatus: $('advice-status'), movelist: $('movelist'), evalFill: $('eval-fill'), evalText: $('eval-text'),
     opponentLine: $('opponent-line'), undo: $('undo'), flip: $('flip'), resign: $('resign'), newGame: $('new-game'),
     colorSelect: $('color-select'), levelSelect: $('level-select'), oppSelect: $('opp-select'),
-    adviceDepth: $('advice-depth'), promo: $('promo-dialog'), roster: $('roster'),
+    adviceDepth: $('advice-depth'), promo: $('promo-dialog'), roster: $('roster'), showExplain: $('show-explain'),
   };
 
   const state = {
@@ -35,12 +35,14 @@
       if (s.level) el.levelSelect.value = s.level;
       if (s.opp) el.oppSelect.value = s.opp;
       if (s.adviceDepth) el.adviceDepth.value = s.adviceDepth;
+      if (typeof s.explain === 'boolean') el.showExplain.checked = s.explain;
     } catch (e) { /* ignore */ }
   }
   function saveSettings() {
     try {
       localStorage.setItem('gunshi-chess-settings', JSON.stringify({
         color: el.colorSelect.value, level: el.levelSelect.value, opp: el.oppSelect.value, adviceDepth: el.adviceDepth.value,
+        explain: el.showExplain.checked,
       }));
     } catch (e) { /* ignore */ }
   }
@@ -172,6 +174,7 @@
         <div class="card-move"><span class="san">${card.san}</span><span class="score ${scoreCls}">形勢 ${card.scoreText}</span></div>
         <div class="card-comment">「${card.comment}」</div>
         ${card.note ? `<div class="card-note">※ ${card.note}</div>` : ''}
+        ${el.showExplain.checked ? `<div class="card-explain"><span class="label">解説</span>${card.explain}${card.cautions ? `<span class="caution">${card.cautions}</span>` : ''}</div>` : ''}
         <div class="chips">${card.tags.map((t) => `<span class="chip${t === '取られる駒あり' ? ' warn' : ''}">${t}</span>`).join('')}</div>
         <div class="pv">読み筋: ${card.pvText}</div>`;
       div.addEventListener('mouseenter', () => { state.hotEnc = card.enc; renderArrows(); });
@@ -380,6 +383,7 @@
     el.adviceDepth.addEventListener('change', () => { state.adviceDepth = +el.adviceDepth.value; saveSettings(); if (!state.busy && !state.over) startAdvice(); });
     el.levelSelect.addEventListener('change', () => { state.level = LEVELS[+el.levelSelect.value]; saveSettings(); });
     el.oppSelect.addEventListener('change', saveSettings);
+    el.showExplain.addEventListener('change', () => { saveSettings(); renderCards(); });
     el.colorSelect.addEventListener('change', saveSettings);
     newGame();
   }
