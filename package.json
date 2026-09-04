@@ -1,0 +1,11 @@
+{
+  "name": "gunshi-chess",
+  "version": "0.1.0",
+  "description": "軍師気分で戦えるチェス: 性格づけした古典的AIが複数の良手を提示する",
+  "private": true,
+  "scripts": {
+    "test": "node test/perft.js && node test/search.js && node test/advisor.js",
+    "start": "python3 -m http.server 8080"
+  },
+  "license": "MIT"
+}

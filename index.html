@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>軍師チェス</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>♞ 軍師チェス</h1>
+  <p class="tagline">自分で指してもよし、軍師たちの進言から選ぶだけでもよし。</p>
+  <div class="controls">
+    <label>あなたの色
+      <select id="color-select">
+        <option value="w">白（先手）</option>
+        <option value="b">黒（後手）</option>
+        <option value="r">ランダム</option>
+      </select>
+    </label>
+    <label>相手の強さ
+      <select id="level-select">
+        <option value="0">入門</option>
+        <option value="1">初級</option>
+        <option value="2" selected>中級</option>
+        <option value="3">上級</option>
+        <option value="4">達人</option>
+      </select>
+    </label>
+    <label>相手の性格
+      <select id="opp-select"><option value="random">ランダム</option></select>
+    </label>
+    <label>軍師の読み
+      <select id="advice-depth">
+        <option value="2">浅い（速い）</option>
+        <option value="3" selected>普通</option>
+        <option value="4">深い（遅い）</option>
+      </select>
+    </label>
+    <button id="new-game" class="primary">新しい対局</button>
+  </div>
+</header>
+
+<main>
+  <section class="board-panel">
+    <div class="opponent-line" id="opponent-line"></div>
+    <div class="board-wrap">
+      <div id="board" class="board"></div>
+      <svg id="arrows" class="arrows" viewBox="0 0 8 8" aria-hidden="true"></svg>
+    </div>
+    <div class="eval-row">
+      <div class="eval-bar" title="形勢（白から見た評価）"><div id="eval-fill" class="eval-fill"></div></div>
+      <span id="eval-text" class="eval-text">±0.0</span>
+    </div>
+    <div id="status" class="status"></div>
+    <div class="board-buttons">
+      <button id="undo">待った</button>
+      <button id="flip">盤を反転</button>
+      <button id="resign">投了</button>
+    </div>
+  </section>
+
+  <section class="advice-panel">
+    <h2>軍師の進言</h2>
+    <p class="hint">カードをクリックするとその手を指します。盤面を直接クリックして指すこともできます。</p>
+    <div id="advice-status" class="advice-status"></div>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <section class="moves-panel">
+    <h2>棋譜</h2>
+    <ol id="movelist" class="movelist"></ol>
+    <details class="roster">
+      <summary>軍師紹介</summary>
+      <ul id="roster"></ul>
+    </details>
+  </section>
+</main>
+
+<div id="promo-dialog" class="modal" hidden>
+  <div class="modal-box">
+    <p>昇格する駒を選んでください</p>
+    <div class="promo-choices"></div>
+  </div>
+</div>
+
+<script src="js/chess.js"></script>
+<script src="js/eval.js"></script>
+<script src="js/search.js"></script>
+<script src="js/advisor.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
